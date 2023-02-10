@@ -33,55 +33,53 @@ def main():
 
     args = vars(parser.parse_args())
 
-    train_model = args['t']
     do_retrieval = args['r']
-    dataset_file_path = args['ds']
-    config_id = args['cid']
-    is_wiki = args['wiki']
-    read_slt = args['slt']
-    encoder_file_path = args['em']
-    model_file_path = args['mp']
-    res_file = args['rf']
-    run_id = args['ri']
-    ignore_full_relative_path = args['frp']
-    tokenize_all = args['ta']
-    tokenize_number = args['tn']
-    queries_directory_path = args['qd']
-    embedding_type = TupleTokenizationMode(args['et'])
-    map_file_path = "Embedding_Preprocessing/" + str(encoder_file_path)
-    config_file_path = "Configuration/config/config_" + str(config_id)
+    if do_retrieval:
+        encoder_file_path = args['em']
+        map_file_path = f"Embedding_Preprocessing/{str(encoder_file_path)}"
+        embedding_type = TupleTokenizationMode(args['et'])
+        config_id = args['cid']
+        config_file_path = f"Configuration/config/config_{str(config_id)}"
 
-    system = TangentCFTBackEnd(config_file=config_file_path, path_data_set=dataset_file_path, is_wiki=is_wiki,
-                               read_slt=read_slt, queries_directory_path=queries_directory_path)
-    if train_model:
-        dictionary_formula_tuples_collection = system.train_model(
-            map_file_path=map_file_path,
-            model_file_path=model_file_path,
-            embedding_type=embedding_type, ignore_full_relative_path=ignore_full_relative_path,
-            tokenize_all=tokenize_all,
-            tokenize_number=tokenize_number
+        dataset_file_path = args['ds']
+        is_wiki = args['wiki']
+        read_slt = args['slt']
+        queries_directory_path = args['qd']
+        system = TangentCFTBackEnd(config_file=config_file_path, path_data_set=dataset_file_path, is_wiki=is_wiki,
+                                   read_slt=read_slt, queries_directory_path=queries_directory_path)
+        train_model = args['t']
+        model_file_path = args['mp']
+        ignore_full_relative_path = args['frp']
+        tokenize_all = args['ta']
+        tokenize_number = args['tn']
+        dictionary_formula_tuples_collection = (
+            system.train_model(
+                map_file_path=map_file_path,
+                model_file_path=model_file_path,
+                embedding_type=embedding_type,
+                ignore_full_relative_path=ignore_full_relative_path,
+                tokenize_all=tokenize_all,
+                tokenize_number=tokenize_number,
+            )
+            if train_model
+            else system.load_model(
+                map_file_path=map_file_path,
+                model_file_path=model_file_path,
+                embedding_type=embedding_type,
+                ignore_full_relative_path=ignore_full_relative_path,
+                tokenize_all=tokenize_all,
+                tokenize_number=tokenize_number,
+            )
         )
-        if do_retrieval:
-            retrieval_result = system.retrieval(dictionary_formula_tuples_collection,
-                                                embedding_type, ignore_full_relative_path, tokenize_all,
-                                                tokenize_number
-                                                )
-            system.create_result_file(retrieval_result, "Retrieval_Results/" + res_file, run_id)
-    else:
-
-        dictionary_formula_tuples_collection = system.load_model(
-            map_file_path=map_file_path,
-            model_file_path=model_file_path,
-            embedding_type=embedding_type, ignore_full_relative_path=ignore_full_relative_path,
-            tokenize_all=tokenize_all,
-            tokenize_number=tokenize_number
+        retrieval_result = system.retrieval(dictionary_formula_tuples_collection,
+                                            embedding_type, ignore_full_relative_path, tokenize_all,
+                                            tokenize_number
+                                            )
+        res_file = args['rf']
+        run_id = args['ri']
+        system.create_result_file(
+            retrieval_result, f"Retrieval_Results/{res_file}", run_id
         )
-        if do_retrieval:
-            retrieval_result = system.retrieval(dictionary_formula_tuples_collection,
-                                                embedding_type, ignore_full_relative_path, tokenize_all,
-                                                tokenize_number
-                                                )
-            system.create_result_file(retrieval_result, "Retrieval_Results/" + res_file, run_id)
 
 
 if __name__ == "__main__":

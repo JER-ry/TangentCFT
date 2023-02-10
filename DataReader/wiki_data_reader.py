@@ -24,10 +24,10 @@ class WikiDataReader(AbstractDataReader, ABC):
         dictionary_formula_tuples = {}
         root = self.collection_file_path
         for directory in os.listdir(root):
-            temp_address = root + "/" + directory + "/"
+            temp_address = f"{root}/{directory}/"
             if not os.path.isdir(temp_address):
                 continue
-            
+
             for filename in os.listdir(temp_address):
                 file_path = temp_address + filename
                 parts = filename.split('/')
@@ -41,8 +41,8 @@ class WikiDataReader(AbstractDataReader, ABC):
                     file_name = temp[:-1]
                     for key in formulas:
                         tuples = formulas[key].get_pairs(window=2, eob=True)
-                        dictionary_formula_tuples[file_name + ":" + str(key)] = tuples
-                except:
+                        dictionary_formula_tuples[f"{file_name}:{str(key)}"] = tuples
+                except Exception:
                     except_count += 1
                     print(file_name)
         return dictionary_formula_tuples
@@ -56,7 +56,7 @@ class WikiDataReader(AbstractDataReader, ABC):
         except_count = 0
         dictionary_query_tuples = {}
         for j in range(1, 21):
-            temp_address = self.queries_directory_path + '/' + str(j) + '.html'
+            temp_address = f'{self.queries_directory_path}/{str(j)}.html'
             try:
                 (ext, content) = MathDocument.read_doc_file(temp_address)
                 formulas = MathExtractor.parse_from_xml(content, 1, operator=(not self.read_slt), missing_tags=None,
@@ -64,7 +64,7 @@ class WikiDataReader(AbstractDataReader, ABC):
                 for key in formulas:
                     tuples = formulas[key].get_pairs(window=2, eob=True)
                     dictionary_query_tuples[j] = tuples
-            except:
+            except Exception:
                 except_count += 1
                 print(j)
         return dictionary_query_tuples

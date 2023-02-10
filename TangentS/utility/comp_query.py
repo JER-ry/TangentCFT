@@ -109,7 +109,7 @@ class CompQuery:
                 # join on docname, not doc_id
                 try:
                     doc = self.by_document[docname]
-                except:
+                except Exception:
                     doc = CompQueryResult(doc_id,docname)
                     self.by_document[docname] = doc
                 # add score of keyword match to current document
@@ -120,47 +120,6 @@ class CompQuery:
             # Reranker.CreateFromMetricID(...)
             # TODO: Adapt the code below to work under the new class design for the re-ranker
             raise Exception("Re-ranking math_tan expressions on combined queries not implemented")
-
-            for qexprnum,query in enumerate(self.mqueries):
-                # keep scores for all existing formulas over all documents
-                for result in query.results.values():
-                    # N.B. only one Result structure per matched formula expression
-                    #print("Candidate: " + result.tree.tostring(), flush=True)
-
-                    if how == "MSS": # compute the MSS score if requested
-                        sim_res = similarity_v06(query.tree, result.tree, Query.create_default_constraints(query.tree))
-                        result.new_scores = sim_res[0]  # scores returned as first component of result -- other components are node sets
-                    elif how == "v09":
-                        sim_res = similarity_v09(query.tree, result.tree, Query.create_default_constraints(query.tree))
-                        result.new_scores = sim_res[0] # only use scores
-                    elif how == "v10":
-                        sim_res = similarity_v10(query.tree, result.tree, Query.create_default_constraints(query.tree))
-                        result.new_scores = sim_res[0] # only use scores
-                    elif how == "v11":
-                        sim_res = similarity_v11(query.tree, result.tree, Query.create_default_constraints(query.tree))
-                        result.new_scores = sim_res[0] # only use scores
-                    else:
-                        result.new_scores = [result.original_score]  # otherwise, just use original score
-                        
-                    for doc_id, offset in result.locations:
-                        title = query.documents[doc_id]
-                        #title = title.rpartition('\\')[2]    # just last part
-                        title = os.path.basename(title) # just last part (KMD)
-
-##                        if not intID: # join on title instead of doc_id
-                        joiner = title
-
-##                        else:
-##                            joiner = doc_id
-                        # add document if first time seen
-                        try:
-                            doc = self.by_document[joiner]
-                            doc.doc_id = doc_id # prefer using math_tan ids (to match positions later)
-                        except:
-                            doc = CompQueryResult(doc_id,title)
-                            self.by_document[joiner] = doc
-                        # add current result to current document
-                        doc.add_mscore(qexprnum,result)
 
     def combine_math(self,how, msize_norm):
         """
@@ -194,18 +153,15 @@ class CompQuery:
                 qlens.append(q.expression.count("[")) # number of nodes is proxy for number of tuples
                 alllength += qlens[i]
 
-            for i in range(len(self.mqueries)):
-                mq_weight.append(qlens[i] / alllength)
+            mq_weight.extend(qlens[i] / alllength for i in range(len(self.mqueries)))
         else:
             # all queries weight the same ...
-            for i in range(len(self.mqueries)):
-                mq_weight.append(1.0 / len(self.mqueries))
-
+            mq_weight.extend(1.0 / len(self.mqueries) for _ in range(len(self.mqueries)))
         if how == "MSS":
             n_scores = 8
         elif how == "v11":
             n_scores = 3
-        elif how == "v09" or how == "v10":
+        elif how in ["v09", "v10"]:
             n_scores = 5
         else:
             n_scores = 1
@@ -223,8 +179,8 @@ class CompQuery:
                         if mathscore.candidate.new_scores > oldscore.candidate.new_scores:
                             matches[qexprnum] = mathscore
                             oldscore.top_in_doc = 0
-                            mathscore.top_in_doc = 1 
-                    except:
+                            mathscore.top_in_doc = 1
+                    except Exception:
                         matches[qexprnum] = mathscore
                         mathscore.top_in_doc = 1
 
@@ -253,7 +209,7 @@ class CompQuery:
 ##                else:
 ##                    print('Error: combine_math must be either "average" or "rerank", not "' + how + '"')
 ##                    return
-                
+
             self.msorted_docs.append(doc)
         self.msorted_docs.sort(key=lambda doc: doc.mcombined,reverse=True)
 
@@ -272,11 +228,7 @@ class CompQuery:
 
             if dynamic_weights:
                 # do it dynamically based on proportion Keywords/Expressions
-                if self.tquery:
-                    n_keywords = len(self.tquery.keywords)
-                else:
-                    n_keywords = 0
-
+                n_keywords = len(self.tquery.keywords) if self.tquery else 0
                 query_elements = len(self.mqueries) + n_keywords
                 mweight = len(self.mqueries) / float(query_elements)
             else:
@@ -287,7 +239,7 @@ class CompQuery:
 
         if not self.msorted_docs:
             self.combine_math(rerank, msize_norm)   # must combine math_tan scores first
-            
+
         for doc in self.msorted_docs:
             mscore = doc.mcombined[0]
             doc.final_score = [mweight * float(mscore) + tweight * float(doc.tscore[1] if self.tquery.keywords else 1.0)] # use normalized text score
@@ -300,25 +252,22 @@ class CompQuery:
         pos = []
         for expr in doc.mscores:
             if expr.top_in_doc:
-                for loc in expr.candidate.locations:
-                    if loc[0] == doc.doc_id: # all doc offsets for the identical formula are listed
-                        pos.append(loc[1])
+                pos.extend(loc[1] for loc in expr.candidate.locations if loc[0] == doc.doc_id)
         return(pos)
 
     def get_math_pos_with_score(self, doc):
         pos = []
         for expr in doc.mscores:
             if expr.top_in_doc:
-                for loc in expr.candidate.locations:
-                    if loc[0] == doc.doc_id: # all doc offsets for the identical formula are listed
-                        pos.append((loc[1], expr.candidate.new_scores))
+                pos.extend(
+                    (loc[1], expr.candidate.new_scores)
+                    for loc in expr.candidate.locations
+                    if loc[0] == doc.doc_id
+                )
         return(pos)
     
     def get_text_pos(self,doc):
-        pos = []
-        for (term,tlist) in doc.tpos.items():
-            pos.append((term,tlist))
-        return(pos)
+        return list(doc.tpos.items())
         
     def output_query(self, out_file, cntl, topk, query_time_ms):
         out_file.write("\n")
@@ -339,7 +288,10 @@ class CompQuery:
 
         min_score = self.sorted_docs[len(self.sorted_docs) - 1].final_score
         if len(self.sorted_docs) < topk:
-            print("Warning: Query produced less than " + str(topk) + " documents. Results will be repeated", flush=True)
+            print(
+                f"Warning: Query produced less than {str(topk)} documents. Results will be repeated",
+                flush=True,
+            )
 
         # force output topk results
         for idx in range(topk):
@@ -353,12 +305,7 @@ class CompQuery:
             #out_file.write("R\t" + str(doc.doc_name) + "\t" + str(doc.final_score) + "\t(at: " + str(exprids) + str(self.get_text_pos(doc))+ ")\n")
             row_elements = [str(idx + 1)]
 
-            if idx < len(self.sorted_docs):
-                # use original score
-                doc_score = doc.final_score
-            else:
-                doc_score = min_score
-
+            doc_score = doc.final_score if idx < len(self.sorted_docs) else min_score
             if isinstance(doc_score, list):
                 row_elements.append(str(doc_score[0]))
             else:

@@ -12,8 +12,8 @@ def get_vectors(dataset_file_path, queries_directory_path, is_wiki, config_id, r
                 model_file_path, tokenize_number=False, ignore_full_relative_path=True, tokenize_all=False,
                 tokenization=3):
     embedding_type = TupleTokenizationMode(tokenization)
-    map_file_path = "Embedding_Preprocessing/" + str(encoder_file_path)
-    config_file_path = "Configuration/config/config_" + str(config_id)
+    map_file_path = f"Embedding_Preprocessing/{str(encoder_file_path)}"
+    config_file_path = f"Configuration/config/config_{str(config_id)}"
     system = TangentCFTBackEnd(config_file=config_file_path, path_data_set=dataset_file_path, is_wiki=is_wiki,
                                read_slt=read_slt, queries_directory_path=queries_directory_path)
     dictionary_formula_tuples_collection = system.load_model(
@@ -32,8 +32,7 @@ def get_vectors(dataset_file_path, queries_directory_path, is_wiki, config_id, r
 def sum_collection(tensor_values_slt, tensor_values_opt, tensor_values_slt_type):
     numpy_lst = []
     index_formula_id = {}
-    idx = 0
-    for formula_id in tensor_values_slt:
+    for idx, formula_id in enumerate(tensor_values_slt):
         temp = tensor_values_slt[formula_id]
         if formula_id in tensor_values_opt:
             temp = np.add(temp, tensor_values_opt[formula_id])
@@ -41,9 +40,8 @@ def sum_collection(tensor_values_slt, tensor_values_opt, tensor_values_slt_type)
             temp = np.add(temp, tensor_values_slt_type[formula_id])
         numpy_lst.append(temp)
         index_formula_id[idx] = formula_id
-        idx += 1
     temp = np.concatenate(numpy_lst, axis=0)
-    tensor_values = Variable(torch.tensor(temp).double()).cuda()
+    tensor_values = Variable(torch.tensor(temp).double())
     return tensor_values, index_formula_id
 
 
@@ -75,18 +73,18 @@ def main():
 
     index_formula_id_slt, query_vectors_slt = get_vectors(dataset_file_path, queries_directory_path,
                                                           is_wiki, config_id=1, read_slt=True,
-                                                          encoder_file_path="slt_encoder.csv",
+                                                          encoder_file_path="slt_encoder.tsv",
                                                           model_file_path="slt_model",
                                                           tokenize_number=True)
     index_formula_id_opt, query_vectors_opt = get_vectors(dataset_file_path, queries_directory_path,
                                                           is_wiki, config_id=2, read_slt=False,
-                                                          encoder_file_path="opt_encoder.csv",
+                                                          encoder_file_path="opt_encoder.tsv",
                                                           model_file_path="opt_model")
     index_formula_id_slt_type, query_vectors_slt_type = get_vectors(dataset_file_path,
                                                                     queries_directory_path,
                                                                     is_wiki, config_id=3,
                                                                     read_slt=True,
-                                                                    encoder_file_path="slt_type_encoder.csv",
+                                                                    encoder_file_path="slt_type_encoder.tsv",
                                                                     model_file_path="slt_type_model",
                                                                     tokenization=2)
 

@@ -7,9 +7,6 @@ from torch.autograd import Variable
 import torch
 import torch.nn.functional as F
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-use_cuda = torch.cuda.is_available()
-
 
 class TangentCFTModule:
     def __init__(self, model_file_path=None):
@@ -48,10 +45,10 @@ class TangentCFTModule:
                 numpy_lst.append(xx)
                 index_formula_id[idx] = formula
                 idx += 1
-            except:
+            except Exception:
                 continue
         temp = numpy.concatenate(numpy_lst, axis=0)
-        tensor_values = Variable(torch.tensor(temp).double()).cuda()
+        tensor_values = Variable(torch.tensor(temp).double())
         return tensor_values, index_formula_id
 
     def index_collection_to_numpy(self, dictionary_formula_lst_encoded_tuples):
@@ -78,21 +75,17 @@ class TangentCFTModule:
             query_vector: formula query vector representation in numpy
         """
         query_vector = query_vector.reshape(1, 300)
-        query_vec = Variable(torch.tensor(query_vector).double()).cuda()
+        query_vec = Variable(torch.tensor(query_vector).double())
         # input("wait here")
         dist = F.cosine_similarity(collection_tensor, query_vec)
         index_sorted = torch.sort(dist, descending=True)[1]
         top_1000 = index_sorted[:1000]
-        top_1000 = top_1000.data.cpu().numpy()
-        cos_values = torch.sort(dist, descending=True)[0][:1000].data.cpu().numpy()
-        result = {}
-        count = 1
-        for x in top_1000:
-            doc_id = formula_index[x]
-            score = cos_values[count - 1]
-            result[doc_id] = score
-            count += 1
-        return result
+        top_1000 = top_1000.data.numpy()
+        cos_values = torch.sort(dist, descending=True)[0][:1000].data.numpy()
+        return {
+            formula_index[x]: cos_values[count - 1]
+            for count, x in enumerate(top_1000, start=1)
+        }
 
     def __get_vector_representation(self, lst_encoded_tuples):
         """

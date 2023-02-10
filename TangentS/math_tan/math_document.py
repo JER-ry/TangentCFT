@@ -26,10 +26,10 @@ class MathDocument:
         self.doc_list = cntl.read("doc_list")
         if not self.doc_list:
             raise Exception("<cntl-file> missing doc_list")
-        file_skips = cntl.read("file_skips")
-        if not file_skips:
+        if file_skips := cntl.read("file_skips"):
+            self.file_skips = file_skips.strip("[]").replace(" ","").split(",")
+        else:
             raise Exception("<cntl-file> missing file_skips")
-        self.file_skips = file_skips.strip("[]").replace(" ","").split(",")
 
     def find_doc_file(self,docid):
         """
@@ -107,14 +107,13 @@ class MathDocument:
         if ext == '.tex':
             if position > 0:
                 print("Warning: .tex documents have only one expression; position %i ignored\n"%position)
-            mathml = LatexToMathML.convert_to_mathml(content)
+            return LatexToMathML.convert_to_mathml(content)
         else:
             maths = MathExtractor.math_tokens(content)
             if position >= len(maths):
                 print("Cannot find MathML expression: position %i too large"%position)
                 return None
-            mathml = maths[position]
-        return(mathml)
+            return maths[position]
     
     def find_mathml_id(self, docid, position):
         """
@@ -131,8 +130,7 @@ class MathDocument:
             return None
         parsed_xml=BeautifulSoup(mathml)
         math_root=parsed_xml.find("math") # namespaces have been removed (FWT)
-        tagid = math_root["id"]
-        return tagid
+        return math_root["id"]
         
 if __name__ == '__main__':
 

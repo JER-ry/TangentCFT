@@ -95,17 +95,17 @@ def read_file(filename, file_id, semantic, missing_tags=None, problem_files=None
             print(item)
         return t, n_err
     else:
-        if ext == '.tex' and semantic:
+        if ext == '.tex':
             if "invalid_filetype" not in problem_files:
-                problem_files["invalid_filetype"] = set([filename])
+                problem_files["invalid_filetype"] = {filename}
             else:
                 problem_files["invalid_filetype"].add(filename)
 
-            print('invalid file format %s for %s in operator tree mode' % (ext, filename))
+            print(f'invalid file format {ext} for {filename} in operator tree mode')
         else:
             problem_files["unknown_filetype"] = problem_files.get("unknown_filetype", set())
             problem_files["unknown_filetype"].add(filename)
-            print('Unknown filetype %s for %s' % (ext, filename))
+            print(f'Unknown filetype {ext} for {filename}')
         return [], 0
 
 def read_file_behrooz(filename, file_id, semantic, missing_tags=None, problem_files=None):
@@ -120,13 +120,14 @@ def read_file_behrooz(filename, file_id, semantic, missing_tags=None, problem_fi
     """
     #s = time.time()
     (ext,content) = MathDocument.read_doc_file(filename)
-    t = MathExtractor.Behrooz_parse_from_xml(content, 1, window=3, operator=semantic, missing_tags=missing_tags,
-                                                problem_files=problem_files)
-        # #print("file %s took %s per expr"%(file_id,(time.time()-s)/len(t)))
-        # for item in t:
-        #     #slttuplesList = SymbolTree.get_pairs(item, window='all')
-        #     print(item)
-    return t
+    return MathExtractor.Behrooz_parse_from_xml(
+        content,
+        1,
+        window=3,
+        operator=semantic,
+        missing_tags=missing_tags,
+        problem_files=problem_files,
+    )
 
 
 # def math_indexer_task(pargs):
@@ -198,18 +199,16 @@ def ConvertWikipediaToSLTTuplesNewVersion(filePathForresults, filename, dirId, l
             tuples = formulas[key].get_pairs(window=1, eob=True)
             if not tuples:
                 return
-            f = open(filePathForresults+"/"+str(dirId)+"/"+file_name+":"+str(key)+".txt", "w+")
-            for t in tuples:
-                f.write(t + "\n")
-            f.close()
+            with open(f"{filePathForresults}/{str(dirId)}/{file_name}:{str(key)}.txt", "w+") as f:
+                for t in tuples:
+                    f.write(t + "\n")
+                    #fileP = filePathForresults + "/" + str(dirId) + "/" + FileID + ":" + str(key) + ".txt"
+                    #f = open(fileP, "w+")
+                    #for t in tuples:
+                        #f.write(t+"\n")
+                    #f.close()
 
-            #fileP = filePathForresults + "/" + str(dirId) + "/" + FileID + ":" + str(key) + ".txt"
-            #f = open(fileP, "w+")
-            #for t in tuples:
-                #f.write(t+"\n")
-            #f.close()
-
-    except:
+    except Exception:
         print(filename)
 
 
@@ -243,15 +242,15 @@ def behrooztest():
     for j in range(1, 17):
         tempAddress = root
         if j < 10:
-            tempAddress = tempAddress + '0' + str(j) + '/Articles'
+            tempAddress = f'{tempAddress}0{str(j)}/Articles'
         else:
             tempAddress = tempAddress + str(j) + '/Articles'
         for filename in os.listdir(tempAddress):
-            filePath = tempAddress + '/' + filename
+            filePath = f'{tempAddress}/{filename}'
             ConvertWikipediaToSLTTuplesNewVersion(filePathForresults, filePath, j,lst)
-            # return
-            # except Exception as err:
-            #     print('-------------------------------------------\n' + str(err))
+                    # return
+                    # except Exception as err:
+                    #     print('-------------------------------------------\n' + str(err))
     for temp in lst:
         print(temp)
 
@@ -265,18 +264,20 @@ def behrooz_queryPreparation(filename, resultFile, file_id, missing_tags=None, p
         tuples = formulas[key].get_pairs(window=1, eob=True)
         if not tuples:
             return
-        f = open(resultFile, "w+")
-        for t in tuples:
-            f.write(t+"\n")
-        f.close()
+        with open(resultFile, "w+") as f:
+            for t in tuples:
+                f.write(t+"\n")
 
 
 def convertHTMLTOSLTprepareQueryForTest():
 
     for i in range(1, 21):
-            print(i)
-            behrooz_queryPreparation("/home/bm3302/Downloads/NTCIR12_MathIR_WikiCorpus_v2.1.0/TestQueries/"+str(i)+".html",
-                                 "/home/bm3302/FastText/SLTTuples_W1/Queries/"+str(i)+".txt", 1)
+        print(i)
+        behrooz_queryPreparation(
+            f"/home/bm3302/Downloads/NTCIR12_MathIR_WikiCorpus_v2.1.0/TestQueries/{str(i)}.html",
+            f"/home/bm3302/FastText/SLTTuples_W1/Queries/{str(i)}.txt",
+            1,
+        )
         # except:
         #     print(i)
    #          "/home/bm3302/Downloads/NTCIR12_MathIR_WikiCorpus_v2.1.0/TestQueries/" + str(i) + ".html",
@@ -329,29 +330,20 @@ def testFile():
     for j in range(1, 17):
         tempAddress = root
         if j < 10:
-            tempAddress = tempAddress + '0' + str(j) + '/Articles'
+            tempAddress = f'{tempAddress}0{str(j)}/Articles'
         else:
             tempAddress = tempAddress + str(j) + '/Articles'
         for filename in os.listdir(tempAddress):
             try:
-                filePath = tempAddress + '/' + filename
-                f = open (filePath)
-                temp =""
-                for line in f.readlines():
-                    temp+= (line.strip())
-                f.close()
-
+                filePath = f'{tempAddress}/{filename}'
+                with open (filePath) as f:
+                    temp = "".join((line.strip()) for line in f)
                 # if "<msup><mi>x</mi><mn>2</mn></msup>" in temp:
                 #if "<semantics><mrow><msub><mi>x</mi><mi>a</mi></msub></mrow>" in temp:
                 if "<semantics><mrow><mi>x</mi><mo>+</mo><mi>m</mi></mrow>" in temp:
                     print(filePath)
-                # (ext, content) = MathDocument.read_doc_file(filePath)
-                # # if "<mn>\n  " in content:
-                # if "x^2" in content:
-                #     print(filePath)
-                    # return
-            except:
-                print('-------------------------------------------' + filename)
+            except Exception:
+                print(f'-------------------------------------------{filename}')
 
 
 def check_value_exists():
@@ -359,19 +351,19 @@ def check_value_exists():
     for j in range(1, 17):
         tempAddress = root
         if j < 10:
-            tempAddress = tempAddress + '0' + str(j) + '/Articles'
+            tempAddress = f'{tempAddress}0{str(j)}/Articles'
         else:
             tempAddress = tempAddress + str(j) + '/Articles'
         for filename in os.listdir(tempAddress):
             try:
-                filePath = tempAddress + '/' + filename
+                filePath = f'{tempAddress}/{filename}'
                 (ext, content) = MathDocument.read_doc_file(filePath)
                 # if "<mn>\n  " in content:
                 if "9.80665" in content:
                     print(filePath)
                     # return
-            except:
-                print('-------------------------------------------' + filename)
+            except Exception:
+                print(f'-------------------------------------------{filename}')
 
 def main():
     # (ext, content) = MathDocument.read_doc_file("/home/bm3302/opt_test.html")

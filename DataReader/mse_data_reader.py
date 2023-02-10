@@ -36,7 +36,7 @@ class MSEDataReader(AbstractDataReader, ABC):
                 dictionary_formula_tuples[formula_id] = lst_tuples
                 line = file.readline().strip("\n")
             except Exception as e:
-                print(str(e))
+                print(e)
                 except_count += 1
                 print(line)
                 line = file.readline().strip("\n")
@@ -46,9 +46,8 @@ class MSEDataReader(AbstractDataReader, ABC):
     def get_collection2(self, ):
         except_count = 0
         dictionary_formula_slt_tuple = {}
-        file = open(self.collection_file_path)
-        text = file.read()
-        file.close()
+        with open(self.collection_file_path) as file:
+            text = file.read()
         text_parts = text.split("$$")
         i = 0
         while i < len(text_parts):
@@ -61,7 +60,7 @@ class MSEDataReader(AbstractDataReader, ABC):
                 else:
                     lst_tuples = latex_math_to_opt_tuples(latex_string)
                 dictionary_formula_slt_tuple[formula_id] = lst_tuples
-            except:
+            except Exception:
                 except_count += 1
                 print(text_parts[i])
                 i += 3

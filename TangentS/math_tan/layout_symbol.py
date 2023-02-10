@@ -16,10 +16,11 @@ class LayoutSymbol(MathSymbol):
     Symbol in a symbol layout tree
     """
 
-    def __init__(self, tag, next_elem=None, above=None, below=None, over=None, under=None, within=None,
-                 pre_above=None, pre_below=None, element=None, mathml=[]): # FWT
+    def __init__(self, tag, next_elem=None, above=None, below=None, over=None, under=None, within=None, pre_above=None, pre_below=None, element=None, mathml=None): # FWT
+        if mathml is None:
+            mathml = []
         MathSymbol.__init__(self, tag)
-                 
+
         # todo: improve representation (and equivalences) by recognizing and preserving fence="true" and separator="true"
         self.next = next_elem
         self.above = above
@@ -33,12 +34,7 @@ class LayoutSymbol(MathSymbol):
         self.mathml = mathml  #KMD
 
     def get_size(self):
-        current_size = 1
-
-        for label, child in self.active_children():
-            current_size += child.get_size()
-
-        return current_size
+        return 1 + sum(child.get_size() for label, child in self.active_children())
 
     @staticmethod
     def Copy(other):
@@ -68,14 +64,13 @@ class LayoutSymbol(MathSymbol):
         if len(children) == 0:
             return 1
         else:
-            return 1 + max([child.tree_depth() for rel, child in children])
+            return 1 + max(child.tree_depth() for rel, child in children)
 
     def is_wildcard_matrix(self):
-        if self.tag[0:2] == "M!":
-            m_rows, m_cols = LayoutSymbol.get_matrix_size(self.tag)
-            return m_rows == 1 and m_cols == 1 and self.within.tag[0] == "?" and self.within.next is None
-        else:
+        if self.tag[:2] != "M!":
             return False
+        m_rows, m_cols = LayoutSymbol.get_matrix_size(self.tag)
+        return m_rows == 1 and m_cols == 1 and self.within.tag[0] == "?" and self.within.next is None
 
     def get_element_children(self):
         children = []
@@ -95,27 +90,26 @@ class LayoutSymbol(MathSymbol):
     def get_node_from_location(self, location):
         if len(location) == 0:
             return self
+        if location[0] == "n":
+            return self.next.get_node_from_location(location[1:])
+        elif location[0] == "a":
+            return self.above.get_node_from_location(location[1:])
+        elif location[0] == "b":
+            return self.below.get_node_from_location(location[1:])
+        elif location[0] == "o":
+            return self.over.get_node_from_location(location[1:])
+        elif location[0] == "u":
+            return self.under.get_node_from_location(location[1:])
+        elif location[0] == "c":
+            return self.pre_above.get_node_from_location(location[1:])
+        elif location[0] == "d":
+            return self.pre_below.get_node_from_location(location[1:])
+        elif location[0] == "e":
+            return self.element.get_node_from_location(location[1:])
+        elif location[0] == "w":
+            return self.within.get_node_from_location(location[1:])
         else:
-            if location[0] == "n":
-                return self.next.get_node_from_location(location[1:])
-            elif location[0] == "a":
-                return self.above.get_node_from_location(location[1:])
-            elif location[0] == "b":
-                return self.below.get_node_from_location(location[1:])
-            elif location[0] == "o":
-                return self.over.get_node_from_location(location[1:])
-            elif location[0] == "u":
-                return self.under.get_node_from_location(location[1:])
-            elif location[0] == "c":
-                return self.pre_above.get_node_from_location(location[1:])
-            elif location[0] == "d":
-                return self.pre_below.get_node_from_location(location[1:])
-            elif location[0] == "e":
-                return self.element.get_node_from_location(location[1:])
-            elif location[0] == "w":
-                return self.within.get_node_from_location(location[1:])
-            else:
-                return None
+            return None
 
     @staticmethod
     def get_matrix_size(matrix_tag):
@@ -124,14 +118,11 @@ class LayoutSymbol(MathSymbol):
         if size_middle == -1:
             # invalid tag!
             return (-1, -1)
-        else:
-            cols = int(matrix_tag[size_middle + 1:])
-            start = size_middle - 1
-            while start > 1 and "0" <= matrix_tag[start - 1] <= "9":
-                start -= 1
-            rows = int(matrix_tag[start:size_middle])
-
-            return rows, cols
+        cols = int(matrix_tag[size_middle + 1:])
+        start = size_middle - 1
+        while start > 1 and "0" <= matrix_tag[start - 1] <= "9":
+            start -= 1
+        return int(matrix_tag[start:size_middle]), cols
 
     def active_children(self):
         children = []
@@ -246,6 +237,7 @@ class LayoutSymbol(MathSymbol):
         """
         def separates(tag):
             return ((tag in separators) or ((tag == '&comma;') and (',' in separators)))
+
         def invisible_matrix(node):
             if node.tag.startswith('M!'):
                 if node.tag[2] in '({|&∥': # inner matrix has fence characters already
@@ -254,12 +246,12 @@ class LayoutSymbol(MathSymbol):
                             or node.pre_above or node.pre_below) # inner matrix has attachement
             else:
                 return False
-                
+
         if len(children) < 4 and invisible_matrix(children[1]): # fenced matrix (but omit closing tag, as below)
             fence = children[0].tag
             if len(children) == 3:
                 fence = fence + children[2].tag
-            children[1].tag = 'M!'+fence+children[1].tag.replace('M!','',1)  # insert fence chararacters into label
+            children[1].tag = f'M!{fence}' + children[1].tag.replace('M!','',1)
             children[1].mathml.append(parent_element)
 
             return children[1]
@@ -325,9 +317,11 @@ class LayoutSymbol(MathSymbol):
                                 while expr.next:
                                     expr = expr.next
                                 expr.next = children[atom_num]
-                mnode.tag = 'M!' + children[0].tag + children[-1].tag + '1x' + str(num_args) # as if fenced 1xn matrix
+                mnode.tag = f'M!{children[0].tag}{children[-1].tag}1x{str(num_args)}'
             else:
-                mnode.tag = 'M!' + children[0].tag + (children[-1].tag if len(children)>1 else '')
+                mnode.tag = f'M!{children[0].tag}' + (
+                    children[-1].tag if len(children) > 1 else ''
+                )
             return mnode
        
     @classmethod
@@ -348,18 +342,18 @@ class LayoutSymbol(MathSymbol):
             rows1 = int(rows1) # convert to numeric)
             cols1 = int(cols1)
             cols2 = int(cols2)
-            for i in range(0,rows1):
-                for j in range(1,cols1):
+            for _ in range(rows1):
+                for _ in range(1,cols1):
                     content1 = content1.element
                 content11 = content1.element # hold onto the first element of the next row
                 content1.element = content2  # insert elements from second matrix
-                for j in range(1,cols2):
+                for _ in range(1,cols2):
                     content2=content2.element
                 content22 = content2.element # hold onto the first element of the next row
                 content2.element = content11 # finish linking in the row from second matrix
                 content2 = content22  # move to next element
                 content1 = content11
-            elem.tag = 'M!' + rows2 + 'x' + str(cols1+cols2)
+            elem.tag = f'M!{rows2}x{str(cols1 + cols2)}'
             return elem
         else:
             # concatenate them
@@ -390,7 +384,7 @@ class LayoutSymbol(MathSymbol):
                 num_cols = 0 # row has no columns
         else:
             num_cols = 0 # no rows => no columns
-        root = cls('M!' + str(num_rows) + "x" + str(num_cols),mathml=[original_element])
+        root = cls(f'M!{num_rows}x{str(num_cols)}', mathml=[original_element])
         if num_rows > 0: # elem points to last entry in first row (row 0)
             root.within = children[0] if children[0] or len(children) == 1 else cls('W!')
             for i in range(1,len(children)):
@@ -408,7 +402,7 @@ class LayoutSymbol(MathSymbol):
         """
 
 ##        print(elem.tag,flush=True)
-        
+
 
         if not elem.tag.startswith('{'): # handle missing namespace declaration (FWT) -- should be reported as warning!
             elem.tag = MathML.namespace+elem.tag
@@ -417,7 +411,7 @@ class LayoutSymbol(MathSymbol):
             children = list(elem)
             if len(children) == 1:
                 return cls.parse_from_mathml(children[0])
-            elif len(children) == 0:
+            elif not children:
                 return None
             else:
                 raise Exception('math_tan element with more than 1 child')
@@ -433,7 +427,7 @@ class LayoutSymbol(MathSymbol):
                 return cls.parse_from_mathml(children[0])
             elif len(children) == 0:
                 return None
-        elif (elem.tag == MathML.mrow) or (elem.tag == MathML.mpadded):
+        elif elem.tag in [MathML.mrow, MathML.mpadded]:
             children_map = filter(lambda x: not MathSymbol.ignore_tag(x), list(map(cls.parse_from_mathml, elem)))
             children = list(children_map)
             if len(children) > 0:
@@ -463,8 +457,7 @@ class LayoutSymbol(MathSymbol):
             if children:
                 row.append(children[0])
             for i, child in enumerate(children[1:]):
-                row.append(cls(separators[min(i, len(separators) - 1)]))
-                row.append(child)
+                row.extend((cls(separators[min(i, len(separators) - 1)]), child))
             closing = elem.attrib.get('close', ')').replace("]","&rsqb;")
             row.append(cls(closing))
             return cls.list2matrix(row, separators, elem)
@@ -722,7 +715,7 @@ class LayoutSymbol(MathSymbol):
                         elem = elem.next
                     elem.next = children[i]
                 return children[0]
-        elif elem.tag == MathML.none or elem.tag == MathML.mphantom:
+        elif elem.tag in [MathML.none, MathML.mphantom]:
             return cls("W!")
         elif elem.tag == MathML.mtd:
             children = list(map(cls.parse_from_mathml, elem))
@@ -736,7 +729,7 @@ class LayoutSymbol(MathSymbol):
         elif elem.tag == MathML.mtr:
             children = list(map(cls.parse_from_mathml, elem))
             if len(children) > 0:
-                root = children[0] if children[0] else cls('W!')
+                root = children[0] or cls('W!')
                 for i in range(1,len(children)):
                     children[i-1].element = children[i]
                 return root
@@ -779,7 +772,7 @@ class LayoutSymbol(MathSymbol):
                     sup.next = children[i+1] if len(children) < i+2 or (children[i+1] and children[i+1].tag != "W!") else None
                     sup=sup.next
             return children[0]
-        elif elem.tag ==MathML.mqvar or elem.tag == MathML.mqvar2:
+        elif elem.tag in [MathML.mqvar, MathML.mqvar2]:
             # added the case where name is given as text within tag instead of attribute (KMD)
             if 'name' in elem.attrib:
                 var_name = elem.attrib['name']
@@ -793,7 +786,7 @@ class LayoutSymbol(MathSymbol):
         else:
             raise UnknownTagException(elem.tag)
 
-    def build_str(self, builder):  # added for building string representation (FWT)
+    def build_str(self, builder):    # added for building string representation (FWT)
         """
         Build string representation of symbol
         """
@@ -805,7 +798,7 @@ class LayoutSymbol(MathSymbol):
         for child, label in [(self.above, 'a'), (self.below, 'b'), (self.over, 'o'), (self.under, 'u'), 
                              (self.pre_above, 'c'), (self.pre_below, 'd'), (self.within, 'w'), (self.element, 'e')]:
             if child:
-                builder.append(','+label)
+                builder.append(f',{label}')
                 child.build_str(builder)
         builder.append(']')
 
@@ -843,55 +836,38 @@ class LayoutSymbol(MathSymbol):
 
         if wildcard is not None and loc in wildcard:
             # Wildcard matches nodes
-            if is_cluster:
+            if not is_cluster and use_filled_style:
+                # Filled style
+                fillcolor = color_wildcards
+                style = "filled"
+                fontcolor = "#ffffff"
+            else:
                 color = color_wildcards
                 style = "bold"
-                peripheries = 2
                 fontcolor = "#000000"
-            else:
-                if use_filled_style:
-                    # Filled style
-                    fillcolor = color_wildcards
-                    style = "filled"
-                    fontcolor = "#ffffff"
-                    peripheries = 2
-                else:
-                    color = color_wildcards
-                    style = "bold"
-                    fontcolor = "#000000"
-                    peripheries = 2
-
+            peripheries = 2
             if generic:
-                node_label = html.unescape(self.tag[0:2])
+                node_label = html.unescape(self.tag[:2])
             else:
                 node_label = html.unescape(self.tag)
 
         elif unified is not None and loc in unified:
             # Unified nodes
-            if is_cluster:
+            if not is_cluster and use_filled_style:
+                # Filled style
+                fillcolor = color_unification
+                style = "filled"
+                fontcolor = "#ffffff"
+            else:
                 color = color_unification
                 style = "bold"
-                peripheries = 2
                 fontcolor = "#000000"
-            else:
-                if use_filled_style:
-                    # Filled style
-                    fillcolor = color_unification
-                    style = "filled"
-                    fontcolor = "#ffffff"
-                    peripheries = 2
-                else:
-                    color = color_unification
-                    style = "bold"
-                    fontcolor = "#000000"
-                    peripheries = 2
-
+            peripheries = 2
             if generic:
-                node_label = html.unescape( self.tag[0:2] )
+                node_label = html.unescape(self.tag[:2])
             else:
                 node_label = html.unescape( self.tag )
 
-        # Exact matches
         elif highlight is not None and loc in highlight:
             if is_cluster:
                 color = "#004400"
@@ -914,28 +890,17 @@ class LayoutSymbol(MathSymbol):
                 node_label = html.unescape( self.tag[2:] )
             else:
                 node_label = html.unescape( self.tag )
-        
-        # Unmatched, or no unification/highlighting visualization requested.
+
         else:
             fontcolor = "#000000"
             if (highlight is not None) and (unified is not None):
                 style = "dashed"
             else:
-                if is_cluster:
-                    style = "bold"
-                else:
-                    if use_filled_style:
-                        style = "filled"
-                    else:
-                        style = "bold"
-
-            if is_cluster:
-                color = "#000000"
+                style = "filled" if not is_cluster and use_filled_style else "bold"
+            if not is_cluster and use_filled_style:
+                fillcolor = "#ffffff"
             else:
-                if use_filled_style:
-                    fillcolor = "#ffffff"
-                else:
-                    color = "#000000"
+                color = "#000000"
 
 
             if (highlight is not None) and generic:
@@ -971,10 +936,10 @@ class LayoutSymbol(MathSymbol):
 
         if self.within is not None:
             # special handling with clusters
-            node_names.append("cluster" + str(current_id))
+            node_names.append(f"cluster{str(current_id)}")
 
             # create a subgraph starting with the within node as root
-            cluster_str = "subgraph cluster" + str(current_id) + " {\n"
+            cluster_str = f"subgraph cluster{str(current_id)}" + " {\n"
             cluster_str += " style= \"" + style + "\";\n"
             cluster_str += " color= \"" + color + "\";\n"
             cluster_str += " fontcolor= \"" + fontcolor + "\";\n"
@@ -983,8 +948,17 @@ class LayoutSymbol(MathSymbol):
             # generate sub-graph from the children within ...
             child_n_strings = []
             child_l_strings = []
-            within_info = self.within.get_dot_strings(prefix + "w", rank_strings, node_names, child_n_strings, child_l_strings,
-                                                     highlight, unified, wildcard, generic)
+            within_info = self.within.get_dot_strings(
+                f"{prefix}w",
+                rank_strings,
+                node_names,
+                child_n_strings,
+                child_l_strings,
+                highlight,
+                unified,
+                wildcard,
+                generic,
+            )
             within_id, within_cluster, within_head_id, within_tail = within_info
             within_tail_id, within_tail_depth = within_tail
             head_id = within_head_id
@@ -997,12 +971,12 @@ class LayoutSymbol(MathSymbol):
             node_strings.append(cluster_str)
 
             # source for links to children
-            source_name = "n_" + str(within_tail_id)
+            source_name = f"n_{str(within_tail_id)}"
 
         else:
             # other nodes that are not handled as clusters...
             head_id = current_id
-            node_name = "n_" + str(current_id)
+            node_name = f"n_{str(current_id)}"
             node_names.append(node_name)
 
             # create node string
@@ -1025,7 +999,7 @@ class LayoutSymbol(MathSymbol):
         # now, add node children
         tail_id = None
         tail_depth = 0
-        
+
         for relation, child in children:
             # call recursively ...
             child_info = child.get_dot_strings(prefix + relation, rank_strings, node_names, node_strings, link_strings,
@@ -1040,54 +1014,70 @@ class LayoutSymbol(MathSymbol):
                 tail_depth = child_tail_depth
 
             # connect to child (or grand child if child is a cluster)
-            child_name = "n_" + str(child_head_id)
-            
+            child_name = f"n_{str(child_head_id)}"
+                    
 
             modificationString = ""
             relationLabel = relation
-            if relation == "n":
+            if relationLabel == "n":
                 relationLabel = ""
                 modificationString = " weight=\"5\""
-            elif relation == "e":
+            elif relationLabel == "e":
                 relationLabel = ""
                 modificationString = " weight=\"3\", arrowhead=\"odot\""
-            elif relation == "a":
+            elif relationLabel == "a":
                 relationLabel = '\u2191'
-            elif relation == "b":
+            elif relationLabel == "b":
                 relationLabel = '\u2193'
-            elif relation == "c":
+            elif relationLabel == "c":
                 relationLabel = '\u2196'
-            elif relation == "d":
+            elif relationLabel == "d":
                 relationLabel = '\u2199'
 
             # check source type of link
             if is_cluster:
                 # source is cluster ...
-                if child_cluster:
-                    child_link = source_name + " -> " + child_name + " [label=\"" + relationLabel + "\", lhead=\"cluster" + \
-                                 str(child_id) + "\", ltail=\"cluster" + str(current_id) + "\"" + modificationString + " ];\n"
-                else:
-                    child_link = source_name + " -> " + child_name + " [label=\"" + relationLabel + \
-                                 "\", ltail=\"cluster" + str(current_id) + "\"" + modificationString + " ];\n"
-            else:
-                # source is node ...
-                if child_cluster:
-                    child_link = node_name + " -> " + child_name + " [label=\"" + relationLabel + "\", lhead=\"cluster" + \
+                child_link = (
+                    f"{source_name} -> "
+                    + child_name
+                    + " [label=\""
+                    + relationLabel
+                    + "\", lhead=\"cluster"
+                    + str(child_id)
+                    + "\", ltail=\"cluster"
+                    + str(current_id)
+                    + "\""
+                    + modificationString
+                    + " ];\n"
+                    if child_cluster
+                    else source_name
+                    + " -> "
+                    + child_name
+                    + " [label=\""
+                    + relationLabel
+                    + "\", ltail=\"cluster"
+                    + str(current_id)
+                    + "\""
+                    + modificationString
+                    + " ];\n"
+                )
+            elif child_cluster:
+                child_link = node_name + " -> " + child_name + " [label=\"" + relationLabel + "\", lhead=\"cluster" + \
                                  str(child_id) + "\"" + modificationString + " ];\n"
-                else:
-                    child_link = node_name + " -> " + child_name + " [label=\"" + relationLabel + "\"" + modificationString + " ];\n"
+            else:
+                child_link = node_name + " -> " + child_name + " [label=\"" + relationLabel + "\"" + modificationString + " ];\n"
 
             link_strings.append(child_link)
 
-            # RZ: Add 'rank=same' information for adjacent nodes.
-            #leftNode = None
-            #rightNode = child_name
-            #if relation == 'e':
-            #    if is_cluster:
-             #       leftNode = source_name
-             #   else:
-              #      leftNode = node_name
-              #  rank_strings.append("{ rank=same; " + leftNode + "; " + rightNode + "; }\n")
+                # RZ: Add 'rank=same' information for adjacent nodes.
+                #leftNode = None
+                #rightNode = child_name
+                #if relation == 'e':
+                #    if is_cluster:
+                 #       leftNode = source_name
+                 #   else:
+                  #      leftNode = node_name
+                  #  rank_strings.append("{ rank=same; " + leftNode + "; " + rightNode + "; }\n")
 
         # set the tail ....
         if tail_id is None:
@@ -1140,23 +1130,23 @@ class LayoutSymbol(MathSymbol):
 
         #call recursively...
         if self.next is not None:
-            self.next.mark_matches(location + "n", matches, unified, wildcard_matches)
+            self.next.mark_matches(f"{location}n", matches, unified, wildcard_matches)
         if self.above is not None:
-            self.above.mark_matches(location + "a", matches, unified, wildcard_matches)
+            self.above.mark_matches(f"{location}a", matches, unified, wildcard_matches)
         if self.below is not None:
-            self.below.mark_matches(location + "b", matches, unified, wildcard_matches)
+            self.below.mark_matches(f"{location}b", matches, unified, wildcard_matches)
         if self.over is not None:
-            self.over.mark_matches(location + "o", matches, unified, wildcard_matches)
+            self.over.mark_matches(f"{location}o", matches, unified, wildcard_matches)
         if self.under is not None:
-            self.under.mark_matches(location + "u", matches, unified, wildcard_matches)
+            self.under.mark_matches(f"{location}u", matches, unified, wildcard_matches)
         if self.pre_above is not None:
-            self.pre_above.mark_matches(location + "c", matches, unified, wildcard_matches)
+            self.pre_above.mark_matches(f"{location}c", matches, unified, wildcard_matches)
         if self.pre_below is not None:
-            self.pre_below.mark_matches(location + "d", matches, unified, wildcard_matches)
+            self.pre_below.mark_matches(f"{location}d", matches, unified, wildcard_matches)
         if self.within is not None:
-            self.within.mark_matches(location + "w", matches, unified, wildcard_matches)
+            self.within.mark_matches(f"{location}w", matches, unified, wildcard_matches)
         if self.element is not None:
-            self.element.mark_matches(location + "e", matches, unified, wildcard_matches)
+            self.element.mark_matches(f"{location}e", matches, unified, wildcard_matches)
 
     def is_semantic(self):
         return False

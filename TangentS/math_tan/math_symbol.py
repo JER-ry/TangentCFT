@@ -21,7 +21,7 @@ class MathSymbol:
 
     @staticmethod
     def tag_is_variable(tag):
-        return tag[0:2] == "V!" or tag[0] == "?"
+        return tag[:2] == "V!" or tag[0] == "?"
 
     @staticmethod
     def tag_is_wildcard(tag):
@@ -29,11 +29,11 @@ class MathSymbol:
 
     @staticmethod
     def tag_is_number(tag):
-        return tag[0:2] == "N!"
+        return tag[:2] == "N!"
 
     @staticmethod
     def tag_is_matrix(tag):
-        return tag[0:2] == "M!"
+        return tag[:2] == "M!"
 
     @staticmethod
     def tag_has_type(tag):
@@ -47,7 +47,7 @@ class MathSymbol:
     def get_SLT_child_short_path(parent_loc, child_loc):
         # use encoding for shortening deep paths (only works for SLT)
 
-        if parent_loc == "-" or parent_loc == "":
+        if parent_loc in ["-", ""]:
             extended = ""
         elif "0" <= parent_loc[0] <= "9":
             extended = MathSymbol.rldecode(parent_loc)
@@ -93,9 +93,7 @@ class MathSymbol:
             return ""
         tag = tag.strip().translate({9:r"\t", 10:r"\n", 13:r"\r",
                                      63:"&quest;", 44:"&comma;", 91:"&lsqb;", 93:"&rsqb;"})
-        if tag in ['\u2061', '\u2062', '\u2063', '\u2064']: # invisible operators
-            return ""
-        return tag
+        return "" if tag in ['\u2061', '\u2062', '\u2063', '\u2064'] else tag
 
     ###########################################################################################################
     # Run length encoding and decoding -- adapted from http://rosettacode.org/wiki/Run-length_encoding#Python #

@@ -51,11 +51,19 @@ class Stats(object):
         """
         Print contents of stats
         """
-        print("Total number of documents/queries processed: "+str(self.num_documents))
-        print("Total number of unique expressions per document involved: "+str(self.num_expressions))
-        print("Total number of expression instances involved: " + str(self.global_expressions))
-        print("Total number of keywords involved: "+str(self.num_keywords))
-        print("Total non-unique expressions containing error nodes: " + str(self.expressions_with_e))
+        print(
+            f"Total number of documents/queries processed: {str(self.num_documents)}"
+        )
+        print(
+            f"Total number of unique expressions per document involved: {str(self.num_expressions)}"
+        )
+        print(
+            f"Total number of expression instances involved: {str(self.global_expressions)}"
+        )
+        print(f"Total number of keywords involved: {str(self.num_keywords)}")
+        print(
+            f"Total non-unique expressions containing error nodes: {str(self.expressions_with_e)}"
+        )
         if len(self.missing_tags) == 0:
             print("No unrecognized tags found in expressions")
         else:

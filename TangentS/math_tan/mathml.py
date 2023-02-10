@@ -1,125 +1,127 @@
 __author__ = 'Nidhin, FWTompa'
 
 
+
+
 class MathML:
     """
     List of recognized tags (general MathML)
     """
     namespace = '{http://www.w3.org/1998/Math/MathML}'
-    math = namespace + 'math'
+    math = f'{namespace}math'
 
     """
         Presentation MathML only
     """
-    mn = namespace + 'mn'
-    mo = namespace + 'mo'
-    mi = namespace + 'mi'
-    mtext = namespace + 'mtext'
-    mrow = namespace + 'mrow'
-    msub = namespace + 'msub'
-    msup = namespace + 'msup'
-    msubsup = namespace + 'msubsup'
-    munderover = namespace + 'munderover'
-    msqrt = namespace + 'msqrt'
-    mroot = namespace + 'mroot'
-    mfrac = namespace + 'mfrac'
-    menclose = namespace + 'menclose'
-    mfenced = namespace + 'mfenced'
-    mover = namespace + 'mover'
-    munder = namespace + 'munder'
-    mpadded = namespace + 'mpadded'
-    mphantom = namespace + 'mphantom'
-    none = namespace + 'none'
-    mstyle = namespace + 'mstyle'
-    mspace = namespace + 'mspace'
-    mtable = namespace + 'mtable'
-    mtr = namespace + 'mtr'
-    mtd = namespace + 'mtd'
-    semantics = namespace + 'semantics'
-    mmultiscripts = namespace + 'mmultiscripts'
-    mprescripts = namespace + 'mprescripts'
+    mn = f'{namespace}mn'
+    mo = f'{namespace}mo'
+    mi = f'{namespace}mi'
+    mtext = f'{namespace}mtext'
+    mrow = f'{namespace}mrow'
+    msub = f'{namespace}msub'
+    msup = f'{namespace}msup'
+    msubsup = f'{namespace}msubsup'
+    munderover = f'{namespace}munderover'
+    msqrt = f'{namespace}msqrt'
+    mroot = f'{namespace}mroot'
+    mfrac = f'{namespace}mfrac'
+    menclose = f'{namespace}menclose'
+    mfenced = f'{namespace}mfenced'
+    mover = f'{namespace}mover'
+    munder = f'{namespace}munder'
+    mpadded = f'{namespace}mpadded'
+    mphantom = f'{namespace}mphantom'
+    none = f'{namespace}none'
+    mstyle = f'{namespace}mstyle'
+    mspace = f'{namespace}mspace'
+    mtable = f'{namespace}mtable'
+    mtr = f'{namespace}mtr'
+    mtd = f'{namespace}mtd'
+    semantics = f'{namespace}semantics'
+    mmultiscripts = f'{namespace}mmultiscripts'
+    mprescripts = f'{namespace}mprescripts'
     mqvar = '{http://search.mathweb.org/ns}qvar'
-    mqvar2 = namespace + 'qvar' # for erroneous namespace
-    merror = namespace + 'merror'  # To deal with Errors in MathML conversion from tools (KMD)
+    mqvar2 = f'{namespace}qvar'
+    merror = f'{namespace}merror'
 
     """
         Content MathML only
     """
-    ci = namespace + "ci"
-    cn = namespace + "cn"
-    csymbol = namespace + "csymbol"
-    cerror = namespace + "cerror"
+    ci = f"{namespace}ci"
+    cn = f"{namespace}cn"
+    csymbol = f"{namespace}csymbol"
+    cerror = f"{namespace}cerror"
 
-    apply = namespace + "apply"
-    matrix = namespace + "matrix"
-    matrixrow = namespace + "matrixrow"
-    share = namespace + "share"
-    vector = namespace + "vector"
+    apply = f"{namespace}apply"
+    matrix = f"{namespace}matrix"
+    matrixrow = f"{namespace}matrixrow"
+    share = f"{namespace}share"
+    vector = f"{namespace}vector"
 
 
-    _abs = namespace + "abs"
-    _and = namespace + "and"
-    _in = namespace + "in"
-    _not = namespace + "not"
-    _or = namespace + "or"
-    approx = namespace + "approx"
-    arccos = namespace + "arccos"
-    arccot = namespace + "arccot"
-    arccsc = namespace + "arccsc"
-    arcsin = namespace + "arcsin"
-    arcsec = namespace + "arcsec"
-    arctan = namespace + "arctan"
+    _abs = f"{namespace}abs"
+    _and = f"{namespace}and"
+    _in = f"{namespace}in"
+    _not = f"{namespace}not"
+    _or = f"{namespace}or"
+    approx = f"{namespace}approx"
+    arccos = f"{namespace}arccos"
+    arccot = f"{namespace}arccot"
+    arccsc = f"{namespace}arccsc"
+    arcsin = f"{namespace}arcsin"
+    arcsec = f"{namespace}arcsec"
+    arctan = f"{namespace}arctan"
 
-    arccosh = namespace + "arccosh"
-    arccoth = namespace + "arccoth"
-    arccsch = namespace + "arccsch"
-    arcsinh = namespace + "arcsinh"
-    arcsech = namespace + "arcsech"
-    arctanh = namespace + "arctanh"
+    arccosh = f"{namespace}arccosh"
+    arccoth = f"{namespace}arccoth"
+    arccsch = f"{namespace}arccsch"
+    arcsinh = f"{namespace}arcsinh"
+    arcsech = f"{namespace}arcsech"
+    arctanh = f"{namespace}arctanh"
 
-    arg = namespace + "arg"
-    bvar = namespace + "bvar"
-    ceiling = namespace + "ceiling"
-    compose = namespace + "compose"
-    cos = namespace + "cos"
-    cosh = namespace + "cosh"
-    cot = namespace + "cot"
-    coth = namespace + "coth"
-    csc = namespace + "csc"
-    csch = namespace + "csch"
-    degree = namespace  + "degree"
-    determinant = namespace + "determinant"
-    divide = namespace + "divide"
-    emptyset = namespace + "emptyset"
-    eq = namespace + "eq"
-    equivalent = namespace + "equivalent"
-    exp = namespace + "exp"
-    exists = namespace + "exists"
-    factorial = namespace + "factorial"
-    floor = namespace + "floor"
-    forall = namespace + "forall"
-    gcd = namespace + "gcd"
-    geq = namespace + "geq"
-    gt = namespace + "gt"
-    imaginary = namespace + "imaginary"
-    imaginaryi = namespace + "imaginaryi"
-    implies = namespace + "implies"
-    infinity = namespace + "infinity"
-    int = namespace + "int"
-    interval = namespace + "interval"
-    intersect = namespace + "intersect"
-    leq = namespace + "leq"
-    list = namespace + "list"
-    limit = namespace + "limit"
-    log = namespace + "log"
-    lowlimit = namespace + "lowlimit"
-    ln = namespace + "ln"
-    lt = namespace + "lt"
-    max = namespace + "max"
-    min = namespace + "min"
-    minus = namespace + "minus"
-    moment = namespace + "moment"
-    momentabout = namespace + "momentabout"
+    arg = f"{namespace}arg"
+    bvar = f"{namespace}bvar"
+    ceiling = f"{namespace}ceiling"
+    compose = f"{namespace}compose"
+    cos = f"{namespace}cos"
+    cosh = f"{namespace}cosh"
+    cot = f"{namespace}cot"
+    coth = f"{namespace}coth"
+    csc = f"{namespace}csc"
+    csch = f"{namespace}csch"
+    degree = f"{namespace}degree"
+    determinant = f"{namespace}determinant"
+    divide = f"{namespace}divide"
+    emptyset = f"{namespace}emptyset"
+    eq = f"{namespace}eq"
+    equivalent = f"{namespace}equivalent"
+    exp = f"{namespace}exp"
+    exists = f"{namespace}exists"
+    factorial = f"{namespace}factorial"
+    floor = f"{namespace}floor"
+    forall = f"{namespace}forall"
+    gcd = f"{namespace}gcd"
+    geq = f"{namespace}geq"
+    gt = f"{namespace}gt"
+    imaginary = f"{namespace}imaginary"
+    imaginaryi = f"{namespace}imaginaryi"
+    implies = f"{namespace}implies"
+    infinity = f"{namespace}infinity"
+    int = f"{namespace}int"
+    interval = f"{namespace}interval"
+    intersect = f"{namespace}intersect"
+    leq = f"{namespace}leq"
+    list = f"{namespace}list"
+    limit = f"{namespace}limit"
+    log = f"{namespace}log"
+    lowlimit = f"{namespace}lowlimit"
+    ln = f"{namespace}ln"
+    lt = f"{namespace}lt"
+    max = f"{namespace}max"
+    min = f"{namespace}min"
+    minus = f"{namespace}minus"
+    moment = f"{namespace}moment"
+    momentabout = f"{namespace}momentabout"
     notin = namespace + "notin"
     notsubset = namespace + "notsubset"
     notprsubset = namespace + "notprsubset"

@@ -15,7 +15,7 @@ class Control:
         if not cntl:
             cntl = "tangent.cntl"  # use tangent.cntl as the default control file name
         if not os.path.exists(cntl):
-            raise Exception(cntl+" does not exist.")
+            raise Exception(f"{cntl} does not exist.")
         self.store("cntl",cntl)
         with open(cntl, mode='r', encoding='utf-8', newline='') as file:
             reader = csv.reader(file, delimiter='\t', lineterminator='\n', quoting=csv.QUOTE_NONE, escapechar="\\")
@@ -28,9 +28,9 @@ class Control:
             try:
                 val = int(val)
             except ValueError:
-                print("Parameter %s not numeric; value given is %s; using %s" % (parm,val,default))
+                print(f"Parameter {parm} not numeric; value given is {val}; using {default}")
                 val = default
-        return (val if val else default)
+        return val or default
 
     def store(self,parm,val):
         self.parms[parm.strip()] = val.strip()

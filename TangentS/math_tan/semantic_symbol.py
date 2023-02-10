@@ -18,19 +18,14 @@ class SemanticSymbol(MathSymbol):
     def __init__(self, tag, children=None, parent=None, mathml=None):
         MathSymbol.__init__(self, tag)
 
-        if isinstance(children, list):
-            # copy ...
-            self.children = list(children)
-        else:
-            self.children = None
-
+        self.children = list(children) if isinstance(children, list) else None
         self.parent = parent
         self.mathml = mathml
 
     def get_size(self):
         current_size = 1
 
-        if not self.children is None:
+        if self.children is not None:
             for child in self.children:
                 current_size += child.get_size()
 
@@ -56,7 +51,7 @@ class SemanticSymbol(MathSymbol):
         if self.children is None or len(self.children) == 0:
             return 1
         else:
-            return 1 + max([child.tree_depth() for child in self.children])
+            return 1 + max(child.tree_depth() for child in self.children)
 
     @classmethod
     def parse_from_mathml(cls, elem, parent=None, identified=None):
@@ -93,30 +88,35 @@ class SemanticSymbol(MathSymbol):
             children = list(elem)
             if len(children) == 1:
                 retval = cls.parse_from_mathml(children[0], None, identified)
-            elif len(children) == 0:
+            elif not children:
                 return None
             else:
                 raise Exception('math_tan element with more than 1 child')
 
-        # operator tree leaves ...
         elif elem.tag == MathML.ci:
             content = MathSymbol.clean(elem.text)
-            retval = SemanticSymbol('V!' + content if content != '' else 'W!', parent=parent)
+            retval = SemanticSymbol(
+                f'V!{content}' if content != '' else 'W!', parent=parent
+            )
 
         elif elem.tag == MathML.cn:
             content = MathSymbol.clean(elem.text)
-            retval = SemanticSymbol('N!' + content if content != '' else 'W!', parent=parent)
+            retval = SemanticSymbol(
+                f'N!{content}' if content != '' else 'W!', parent=parent
+            )
 
         elif elem.tag == MathML.mtext:
             content = MathSymbol.clean(elem.text)
-            retval = SemanticSymbol('T!' + content if content != '' else 'W!', parent=parent)
+            retval = SemanticSymbol(
+                f'T!{content}' if content != '' else 'W!', parent=parent
+            )
 
-        elif elem.tag == MathML.mqvar or elem.tag == MathML.mqvar2:
+        elif elem.tag in [MathML.mqvar, MathML.mqvar2]:
             if 'name' in elem.attrib:
                 var_name = elem.attrib['name']
             else:
                 var_name = MathSymbol.clean(elem.text)
-            return SemanticSymbol('?' + var_name, parent=parent)
+            return SemanticSymbol(f'?{var_name}', parent=parent)
 
         elif elem.tag == MathML.cerror:
             err_root = SemanticSymbol('E!', children=[], parent=parent)
@@ -130,16 +130,15 @@ class SemanticSymbol(MathSymbol):
 
             retval = err_root
 
-        # special mathml operations
         elif elem.tag == MathML.apply:
             # operator ...there should be at least one operand?
             children = list(elem)
             # root (operator)
             op_root = cls.parse_from_mathml(children[0], parent, identified)
 
-            if op_root.tag[0:2] == "V!":
+            if op_root.tag[:2] == "V!":
                 # identifier used as an operator, assume a function!
-                op_root.tag = "F!" + op_root.tag[2:]
+                op_root.tag = f"F!{op_root.tag[2:]}"
 
             # check the case of compound operators (will have children)
             if op_root.tree_depth() > 1:
@@ -173,9 +172,7 @@ class SemanticSymbol(MathSymbol):
                 # child 1: closed inteval for (low limit, upper limit)
                 # child 2: bounded var
                 for tempo_op in op_root.children:
-                    if False:
-                        pass
-                    elif main_operand is None:
+                    if main_operand is None:
                         main_operand = tempo_op
                     else:
                         raise Exception("Int with multiple main operands")
@@ -216,8 +213,6 @@ class SemanticSymbol(MathSymbol):
                 op_root.children = [main_operand, degree]
 
             if op_root.tag == "O!cases":
-                # too much variation in data to consistently get each case as an individual row
-                pass
                 """
                 # should have an even number of children ....
                 if len(op_root.children) > 1:
@@ -245,7 +240,10 @@ class SemanticSymbol(MathSymbol):
                 """
 
             # check ...
-            if len(op_root.children) > SemanticSymbol.MaxChildren and op_root.tag[0:2] == "U!":
+            if (
+                len(op_root.children) > SemanticSymbol.MaxChildren
+                and op_root.tag[:2] == "U!"
+            ):
                 # too many children for a single U! node, since the order is not important, it can be split ...
                 SemanticSymbol.split_node(op_root)
 
@@ -253,30 +251,26 @@ class SemanticSymbol(MathSymbol):
 
         elif elem.tag == MathML.share:
             # copy a portion of the tree used before ...
-            if elem.attrib["href"] == "#.cmml":
-                # special case common in equations, repeat right operand of last operation ...
-                if parent.parent.tag == "U!and":
-                    # identify root of subtree to copy ...
-                    last_operand = parent.parent.children[-1].children[-1]
-                    # copy ...
-                    retval = SemanticSymbol.Copy(last_operand)
-                    retval.parent = parent
+            if elem.attrib["href"] == "#.cmml" and parent.parent.tag == "U!and":
+                # identify root of subtree to copy ...
+                last_operand = parent.parent.children[-1].children[-1]
+                # copy ...
+                retval = SemanticSymbol.Copy(last_operand)
+                retval.parent = parent
 
-        # tags with special handling ...
-        # ... groups of elements ...
-        elif elem.tag == MathML.vector or elem.tag == MathML.list or elem.tag == MathML.set:
+        elif elem.tag in [MathML.vector, MathML.list, MathML.set]:
             subtype = "--"
             if elem.tag == MathML.vector:
                 subtype = "V-"
             elif elem.tag == MathML.list:
                 subtype = "L-"
-            elif elem.tag == MathML.set:
+            else:
                 # a vector (or list) ...
                 subtype = "S-"
 
             children = list(elem)
 
-            vec_root = SemanticSymbol("M!" + subtype + str(len(children)), [], parent)
+            vec_root = SemanticSymbol(f"M!{subtype}{str(len(children))}", [], parent)
 
             for child in children:
                 tempo_child = cls.parse_from_mathml(child, vec_root, identified)
@@ -285,12 +279,13 @@ class SemanticSymbol(MathSymbol):
 
             retval = vec_root
 
-        # ... matrices ...
         elif elem.tag == MathML.matrix:
             # a matrix, check the number of rows ...
             children = list(elem)
 
-            mat_root = SemanticSymbol("M!M-" + str(len(children)) + "x", children=[], parent=parent)
+            mat_root = SemanticSymbol(
+                f"M!M-{str(len(children))}x", children=[], parent=parent
+            )
             # process rows, determine number of columns ...
 
             mat_rows = []
@@ -313,7 +308,6 @@ class SemanticSymbol(MathSymbol):
 
             retval = mat_root
 
-        # ... matrix rows ...
         elif elem.tag == MathML.matrixrow:
             # a matrix row,
             retval = SemanticSymbol("M!R!", children=[], parent=parent)
@@ -322,7 +316,6 @@ class SemanticSymbol(MathSymbol):
 
             # retval = [cls.parse_from_mathml(child, parent, identified) for child in list(elem)]
 
-        # ... invervals ...
         elif elem.tag == MathML.interval:
             left = right = None
             if "closure" in elem.attrib:
@@ -340,14 +333,16 @@ class SemanticSymbol(MathSymbol):
                     left = "C"
                     right = "O"
                 else:
-                    raise Exception("Invalid closure type " + closure)
+                    raise Exception(f"Invalid closure type {closure}")
 
             if left is None:
                 # default, closed
                 left = "C"
                 right = "C"
 
-            retval = SemanticSymbol("O!interval(" + left + "-" + right + ")", children=[], parent=parent)
+            retval = SemanticSymbol(
+                f"O!interval({left}-{right})", children=[], parent=parent
+            )
 
             children = list(elem)
             for child in children:
@@ -356,7 +351,6 @@ class SemanticSymbol(MathSymbol):
                 retval.children.append(tempo_child)
 
 
-        # functions with special tags ...
         elif elem.tag in [MathML.sin, MathML.cos, MathML.tan, MathML.cot, MathML.sec, MathML.csc,
                           MathML.sinh, MathML.cosh, MathML.tanh, MathML.coth, MathML.sech, MathML.csch,
                           MathML.arccos, MathML.arccot, MathML.arccsc, MathML.arcsec, MathML.arcsin, MathML.arctan,
@@ -365,17 +359,16 @@ class SemanticSymbol(MathSymbol):
                           MathML._abs, MathML.exp, MathML.log, MathML.ln, MathML.min, MathML.max,
                           MathML.ceiling, MathML.floor, MathML.arg, MathML.gcd,
                           MathML.real, MathML.imaginary]:
-            retval = SemanticSymbol("F!" + short_tag, parent=parent)
+            retval = SemanticSymbol(f"F!{short_tag}", parent=parent)
 
         elif elem.tag == MathML.determinant:
             retval = SemanticSymbol("F!det", parent=parent)
 
-        # unordered operators
         elif elem.tag in [MathML.approx, MathML.eq, MathML.neq, MathML.equivalent,
                           MathML.union, MathML.intersect,
                           MathML.plus, MathML.times,
                           MathML._and, MathML._or]:
-            retval = SemanticSymbol("U!" + short_tag, parent=parent)
+            retval = SemanticSymbol(f"U!{short_tag}", parent=parent)
 
 
         elif elem.tag in [MathML.lt, MathML.gt, MathML.leq, MathML.geq,
@@ -385,13 +378,11 @@ class SemanticSymbol(MathSymbol):
                           MathML._not, MathML.implies,
                           MathML.int, MathML.sum, MathML.partialdiff, MathML.limit,
                           MathML.factorial, MathML.compose, MathML.root]:
-            retval = SemanticSymbol("O!" + short_tag, parent=parent)
+            retval = SemanticSymbol(f"O!{short_tag}", parent=parent)
 
-        # special constants
         elif elem.tag in [MathML.infinity, MathML.emptyset, MathML.imaginaryi]:
-            retval = SemanticSymbol("C!" + short_tag, parent=parent)
+            retval = SemanticSymbol(f"C!{short_tag}", parent=parent)
 
-        # temporal modifiers of operators?
         elif elem.tag in [MathML.degree, MathML.bvar, MathML.lowlimit, MathML.uplimit]:
             retval = SemanticSymbol("$!" + short_tag, children=[], parent=parent)
 
@@ -399,15 +390,25 @@ class SemanticSymbol(MathSymbol):
             for child in children:
                 retval.children.append(cls.parse_from_mathml(child, retval, identified))
 
-        # generic tag operators
         elif elem.tag == MathML.csymbol:
             # Operators in general
             content = MathSymbol.clean(elem.text).lower()
 
             cd = elem.attrib["cd"] if "cd" in elem.attrib else ""
 
-            if cd == "latexml":
+            if cd == "ambiguous":
+                if content == "formulae-sequence":
+                    retval = SemanticSymbol("O!form-seq", parent=parent)
+                elif content == "fragments":
+                    retval = SemanticSymbol("O!fragments", parent=parent)
+                elif content == "missing-subexpression":
+                    retval = SemanticSymbol("W!", parent=parent)
+                elif content == "subscript":
+                    retval = SemanticSymbol("O!SUB", parent=parent)
+                elif content == "superscript":
+                    retval = SemanticSymbol("O!SUP", parent=parent)
 
+            elif cd == "latexml":
                 if content in ["annotated", "approaches-limit", "approximately-equals-or-equals",
                                "approximately-equals-or-image-of",
                                "assign", "asymptotically-equals", "because", "between", "binomial", "bottom",
@@ -491,21 +492,9 @@ class SemanticSymbol(MathSymbol):
                         value = float(content)
                         # will reach this line only if it can be parsed as a float value ...
                         retval = SemanticSymbol("N!" + str(value), parent=parent)
-                    except:
+                    except Exception:
                         # do nothing ...
                         pass
-
-            elif cd == "ambiguous":
-                if content == "formulae-sequence":
-                    retval = SemanticSymbol("O!form-seq", parent=parent)
-                elif content == "fragments":
-                    retval = SemanticSymbol("O!fragments", parent=parent)
-                elif content == "missing-subexpression":
-                    retval = SemanticSymbol("W!", parent=parent)
-                elif content == "subscript":
-                    retval = SemanticSymbol("O!SUB", parent=parent)
-                elif content == "superscript":
-                    retval = SemanticSymbol("O!SUP", parent=parent)
 
             elif cd == "unknown":
                 # Unknown type ...
@@ -525,13 +514,16 @@ class SemanticSymbol(MathSymbol):
         if "id" in elem.attrib:
             identified[elem.attrib["id"]] = retval
 
-        if retval.tag[0:2] == "E!":
+        if retval.tag[:2] == "E!":
             # check for common error patterns to simplify tree...
 
             # contiguous "unknown" csymbol....
             pos = 0
             while pos + 1 < len(retval.children):
-                if retval.children[pos].tag[0:2] in ["-!", "T!"] and retval.children[pos + 1].tag[0:2] == "-!":
+                if (
+                    retval.children[pos].tag[:2] in ["-!", "T!"]
+                    and retval.children[pos + 1].tag[:2] == "-!"
+                ):
                     # combine ... change to text ...
                     retval.children[pos].tag = "T!" + retval.children[pos].tag[2:] + retval.children[pos + 1].tag[2:]
                     # remove next ...
@@ -553,27 +545,28 @@ class SemanticSymbol(MathSymbol):
 
     @staticmethod
     def split_node(node):
-        if len(node.children) > SemanticSymbol.MaxChildren:
-            # do a binary split
-            mid_point = math_tan.ceil(len(node.children) / 2.0)
+        if len(node.children) <= SemanticSymbol.MaxChildren:
+            return
+        # do a binary split
+        mid_point = math_tan.ceil(len(node.children) / 2.0)
 
-            # create new parents ...
-            left_child = SemanticSymbol(node.tag, children=node.children[:mid_point], parent=node)
-            right_child = SemanticSymbol(node.tag, children=node.children[mid_point:], parent=node)
+        # create new parents ...
+        left_child = SemanticSymbol(node.tag, children=node.children[:mid_point], parent=node)
+        right_child = SemanticSymbol(node.tag, children=node.children[mid_point:], parent=node)
 
-            # link children (now grand-children to their new parents)
-            for child in left_child.children:
-                child.parent = left_child
+        # link children (now grand-children to their new parents)
+        for child in left_child.children:
+            child.parent = left_child
 
-            for child in right_child.children:
-                child.parent = right_child
+        for child in right_child.children:
+            child.parent = right_child
 
-            # update node children ...
-            node.children = [left_child, right_child]
+        # update node children ...
+        node.children = [left_child, right_child]
 
-            # continue splitting recursively ...
-            SemanticSymbol.split_node(left_child)
-            SemanticSymbol.split_node(right_child)
+        # continue splitting recursively ...
+        SemanticSymbol.split_node(left_child)
+        SemanticSymbol.split_node(right_child)
 
     @staticmethod
     def idx_rel_type(idx):
@@ -595,7 +588,7 @@ class SemanticSymbol(MathSymbol):
         if self.children is not None:
             for idx, child in enumerate(self.children):
                 rel_type = SemanticSymbol.idx_rel_type(idx)
-                builder.append(',' + rel_type)
+                builder.append(f',{rel_type}')
                 child.build_str(builder)
 
         builder.append(']')
@@ -612,27 +605,25 @@ class SemanticSymbol(MathSymbol):
     def get_tree_leaves(self):
         if self.is_leaf():
             return [self]
-        else:
-            leaves = []
-            for child in self.children:
-                leaves += child.get_tree_leaves()
+        leaves = []
+        for child in self.children:
+            leaves += child.get_tree_leaves()
 
-            return leaves
+        return leaves
 
     def is_wildcard_matrix(self):
-        if self.tag[0:2] == "M!" and self.tag != "M!R!":
-            # get leaves ....
-            leaves = self.get_tree_leaves()
-
-            return len(leaves) == 1 and leaves[0].tag[0] == "?"
-        else:
+        if self.tag[:2] != "M!" or self.tag == "M!R!":
             return False
+        # get leaves ....
+        leaves = self.get_tree_leaves()
+
+        return len(leaves) == 1 and leaves[0].tag[0] == "?"
 
     def get_dot_strings(self, prefix, rank_strings, node_names, node_strings, link_strings,
                         highlight=None, unified=None, wildcard=None, generic=False):
 
         current_id = len(node_names)
-        is_cluster = self.tag[0:2] == "M!"
+        is_cluster = self.tag[:2] == "M!"
 
         color_unification = "#EA7300"
         color_wildcards = "#FF0000"
@@ -657,55 +648,38 @@ class SemanticSymbol(MathSymbol):
 
         if wildcard is not None and loc in wildcard:
             # Wildcard matches nodes
-            if is_cluster:
+            if not is_cluster and use_filled_style:
+                # Filled style
+                fillcolor = color_wildcards
+                style = "filled"
+                fontcolor = "#ffffff"
+            else:
                 color = color_wildcards
                 style = "bold"
-                peripheries = 2
                 fontcolor = "#000000"
-            else:
-                if use_filled_style:
-                    # Filled style
-                    fillcolor = color_wildcards
-                    style = "filled"
-                    fontcolor = "#ffffff"
-                    peripheries = 2
-                else:
-                    color = color_wildcards
-                    style = "bold"
-                    fontcolor = "#000000"
-                    peripheries = 2
-
+            peripheries = 2
             if generic:
-                node_label = html.unescape(self.tag[0:2])
+                node_label = html.unescape(self.tag[:2])
             else:
                 node_label = html.unescape(self.tag)
 
         elif unified is not None and loc in unified:
             # Unified nodes
-            if is_cluster:
+            if not is_cluster and use_filled_style:
+                # Filled style
+                fillcolor = color_unification
+                style = "filled"
+                fontcolor = "#ffffff"
+            else:
                 color = color_unification
                 style = "bold"
-                peripheries = 2
                 fontcolor = "#000000"
-            else:
-                if use_filled_style:
-                    # Filled style
-                    fillcolor = color_unification
-                    style = "filled"
-                    fontcolor = "#ffffff"
-                    peripheries = 2
-                else:
-                    color = color_unification
-                    style = "bold"
-                    fontcolor = "#000000"
-                    peripheries = 2
-
+            peripheries = 2
             if generic:
-                node_label = html.unescape(self.tag[0:2])
+                node_label = html.unescape(self.tag[:2])
             else:
                 node_label = html.unescape(self.tag)
 
-        # Exact matches
         elif highlight is not None and loc in highlight:
             if is_cluster:
                 color = "#004400"
@@ -725,27 +699,16 @@ class SemanticSymbol(MathSymbol):
 
             node_label = html.unescape(self.tag[2:])
 
-        # Unmatched, or no unification/highlighting visualization requested.
         else:
             fontcolor = "#000000"
             if (highlight is not None) and (unified is not None):
                 style = "dashed"
             else:
-                if is_cluster:
-                    style = "bold"
-                else:
-                    if use_filled_style:
-                        style = "filled"
-                    else:
-                        style = "bold"
-
-            if is_cluster:
-                color = "#000000"
+                style = "filled" if not is_cluster and use_filled_style else "bold"
+            if not is_cluster and use_filled_style:
+                fillcolor = "#ffffff"
             else:
-                if use_filled_style:
-                    fillcolor = "#ffffff"
-                else:
-                    color = "#000000"
+                color = "#000000"
 
             if (highlight is not None) and generic:
                 node_label = ""
@@ -757,10 +720,10 @@ class SemanticSymbol(MathSymbol):
 
         if is_cluster:
             # special handling with clusters
-            node_names.append("cluster" + str(current_id))
+            node_names.append(f"cluster{str(current_id)}")
 
             # create a subgraph starting with the within node as root
-            cluster_str = "subgraph cluster" + str(current_id) + " {\n"
+            cluster_str = f"subgraph cluster{str(current_id)}" + " {\n"
             cluster_str += " style= \"" + style + "\";\n"
             cluster_str += " color= \"" + color + "\";\n"
             cluster_str += " fontcolor= \"" + fontcolor + "\";\n"
@@ -787,7 +750,7 @@ class SemanticSymbol(MathSymbol):
 
                 # for linking to other nodes, use first child ...
                 if idx == 0:
-                    source_name = "n_" + str(child_tail_id)
+                    source_name = f"n_{str(child_tail_id)}"
                     head_id = child_head_id
 
             child_content = " ".join(child_n_strings) + " ".join(child_l_strings)
@@ -799,7 +762,7 @@ class SemanticSymbol(MathSymbol):
         else:
             # other nodes that are not handled as clusters...
             head_id = current_id
-            node_name = "n_" + str(current_id)
+            node_name = f"n_{str(current_id)}"
             node_names.append(node_name)
 
             # create node string
@@ -819,6 +782,7 @@ class SemanticSymbol(MathSymbol):
             # source for links to children
             source_name = node_name
 
+            modificationString = ""
             # now, add node children
             for idx, child in enumerate(self.children):
                 relation = SemanticSymbol.idx_rel_type(idx)
@@ -837,18 +801,28 @@ class SemanticSymbol(MathSymbol):
                     tail_depth = child_tail_depth
 
                 # connect to child (or grand child if child is a cluster)
-                child_name = "n_" + str(child_head_id)
+                child_name = f"n_{str(child_head_id)}"
 
-                modificationString = ""
-                if self.tag[0:2] == "U!" or len(self.children) == 1:
+                if self.tag[:2] == "U!" or len(self.children) == 1:
                     relationLabel = ""
                 else:
                     relationLabel = relation
 
                 # source is node ...
                 if child_cluster:
-                    child_link = node_name + " -> " + child_name + " [label=\"" + relationLabel + "\", lhead=\"cluster" + \
-                                 str(child_id) + "\"" + modificationString + " ];\n"
+                    child_link = (
+                        (
+                            (
+                                f"{node_name} -> {child_name}"
+                                + " [label=\""
+                                + relationLabel
+                                + "\", lhead=\"cluster"
+                                + str(child_id)
+                            )
+                            + "\""
+                        )
+                        + modificationString
+                    ) + " ];\n"
                 else:
                     child_link = node_name + " -> " + child_name + " [label=\"" + relationLabel + "\"" + modificationString + " ];\n"
 

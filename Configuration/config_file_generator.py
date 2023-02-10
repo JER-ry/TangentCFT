@@ -45,7 +45,7 @@ def main():
             if len(config_map[item]) > 1:
                 config_map[item].pop(0)
             setattr(cfg, attribute, value)
-        cfg.write_to_file("config/config_"+str(file_id))
+        cfg.write_to_file(f"config/config_{str(file_id)}")
 
 
 if __name__ == '__main__':

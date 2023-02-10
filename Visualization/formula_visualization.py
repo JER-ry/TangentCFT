@@ -11,7 +11,7 @@ def read_data_points(file_path_formula_categories, file_path_2d_vectors_of_formu
         sections = line.split(",")
         file2 = open(file_path_2d_vectors_of_formulas + sections[1] + ".txt")
         vector = np.fromfile(file2, sep=" ")
-        if sections[0] in data_points.keys():
+        if sections[0] in data_points:
             data_points[sections[0]].append(vector)
         else:
             lst = [vector]
@@ -54,11 +54,18 @@ def draw_map(file_path_formula_categories, file_path_2d_vectors_of_formulas):
     y_range = max_y - min_y
     x = (2 * (x - min_x) / x_range) - 1
     y = (2 * (y - min_y) / y_range) - 1
-    legend_info = []
-    for counter in range(0, len(colors)):
-        legend_info.append(Line2D([0], [0], color='w', label=labels[counter], markerfacecolor=colors[counter],
-                                  marker=markers[counter], markersize=8))
-
+    legend_info = [
+        Line2D(
+            [0],
+            [0],
+            color='w',
+            label=labels[counter],
+            markerfacecolor=colors[counter],
+            marker=markers[counter],
+            markersize=8,
+        )
+        for counter in range(len(colors))
+    ]
     fig, ax = plt.subplots()
     for key in vector_2d_formulas.keys():
         key = int(key)

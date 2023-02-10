@@ -25,8 +25,8 @@ class TangentCftModel:
 
         train_start_time = datetime.datetime.now()
         print("Training the model")
-        self.model = FastText(fast_text_train_data, size=size, window=window, sg=sg, hs=hs,
-                              workers=1, negative=negative, iter=iteration, min_n=min_n,
+        self.model = FastText(fast_text_train_data, vector_size=size, window=window, sg=sg, hs=hs,
+                              negative=negative, epochs=iteration, min_n=min_n,
                               max_n=max_n, word_ngrams=word_ngrams)
 
         train_end_time = datetime.datetime.now()
@@ -34,11 +34,11 @@ class TangentCftModel:
         return train_end_time - train_start_time
 
     def save_model(self, model_file_path):
-        file_name = (model_file_path+".wv.vectors.npy")
+        file_name = f"{model_file_path}.wv.vectors.npy"
         self.model.save(file_name)
 
     def load_model(self, model_file_path):
-        self.model = FastText.load(model_file_path+".wv.vectors.npy")
+        self.model = FastText.load(f"{model_file_path}.wv.vectors.npy")
 
     def get_vector_representation(self, encoded_math_tuple):
         return self.model.wv[encoded_math_tuple]

@@ -48,7 +48,7 @@ class TupleEncoder:
             converted_value, node_map, node_id, update_map_node = TupleEncoder.__convert_node_elements(
                 tuple_elements[0], node_map, node_id, update_map_node, embedding_type, tokenize_all=tokenize_all,
                 tokenize_number=tokenize_number)
-            encoded_tuple = encoded_tuple + converted_value
+            encoded_tuple += converted_value
 
             # Encoding Element 2
             converted_value, node_map, node_id, update_map_node = TupleEncoder.__convert_node_elements(
@@ -75,38 +75,31 @@ class TupleEncoder:
     def __convert_node_elements(node, node_map, node_id, update_map_node, embedding_type, tokenize_all=False,
                                 tokenize_number=False):
         lst = []
-        if "!" in node:
-            # This shows the tuple is a leaf in the tree and this node has only Type and no Value
-            if node == "O!":
-                lst.append(node)
-            # Tuple has both Value and Type
-            else:
-                # All the node Type are kept with their ! sign.
-                node_type = node.split("!")[0] + "!"
-                # Value of the node
-                node_value = node.split("!")[1]
+        if "!" in node and node == "O!" or "!" not in node:
+            lst.append(node)
+        else:
+            # All the node Type are kept with their ! sign.
+            node_type = node.split("!")[0] + "!"
+            # Value of the node
+            node_value = node.split("!")[1]
 
                 # Check if it needs to break down numbers or other Types such as text
                 # For instance, convert "sin" to "s" "i" "n"
-                if embedding_type == TupleTokenizationMode.Type:
-                    lst.append(node_type)
-                elif embedding_type == TupleTokenizationMode.Value:
-                    if not tokenize_all and (not tokenize_number or node_type != "N!"):
-                        lst.append(node_value)
-                    else:
-                        for val in node_value:
-                            lst.append(val)
-                elif embedding_type == TupleTokenizationMode.Both_Separated:
-                    lst.append(node_type)
-                    if not tokenize_all and (not tokenize_number or node_type != "N!"):
-                        lst.append(node_value)
-                    else:
-                        for val in node_value:
-                            lst.append(val)
+            if embedding_type == TupleTokenizationMode.Type:
+                lst.append(node_type)
+            elif embedding_type == TupleTokenizationMode.Value:
+                if not tokenize_all and (not tokenize_number or node_type != "N!"):
+                    lst.append(node_value)
                 else:
-                    lst.append(node)
-        else:
-            lst.append(node)
+                    lst.extend(iter(node_value))
+            elif embedding_type == TupleTokenizationMode.Both_Separated:
+                lst.append(node_type)
+                if not tokenize_all and (not tokenize_number or node_type != "N!"):
+                    lst.append(node_value)
+                else:
+                    lst.extend(iter(node_value))
+            else:
+                lst.append(node)
         return TupleEncoder.__get_char_value(lst, node_map, node_id, update_map_node)
 
     @staticmethod

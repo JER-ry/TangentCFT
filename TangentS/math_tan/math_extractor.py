@@ -87,9 +87,9 @@ class MathExtractor:
         parsed_xml = BeautifulSoup(tree, "lxml")
 
         math_root = parsed_xml.find("math")  # namespaces have been removed (FWT)
-        application_tex = math_root.find("annotation", {"encoding": "application/x-tex"})
-
-        if application_tex:
+        if application_tex := math_root.find(
+            "annotation", {"encoding": "application/x-tex"}
+        ):
             application_tex.decompose()
 
         pmml_markup = math_root.find("annotation-xml", {"encoding": "MathML-Presentation"})
@@ -97,8 +97,9 @@ class MathExtractor:
             pmml_markup.name = "math"
         else:
             pmml_markup = math_root
-            cmml_markup = math_root.find("annotation-xml", {"encoding": "MathML-Content"})
-            if cmml_markup:
+            if cmml_markup := math_root.find(
+                "annotation-xml", {"encoding": "MathML-Content"}
+            ):
                 cmml_markup.decompose()  # delete any Content MML
         pmml_markup['xmlns'] = "http://www.w3.org/1998/Math/MathML"  # set the default namespace
         return str(pmml_markup)
@@ -116,9 +117,9 @@ class MathExtractor:
         parsed_xml = BeautifulSoup(tree, "lxml")
 
         math_root = parsed_xml.find("math")  # namespaces have been removed (FWT)
-        application_tex = math_root.find("annotation", {"encoding": "application/x-tex"})
-
-        if application_tex:
+        if application_tex := math_root.find(
+            "annotation", {"encoding": "application/x-tex"}
+        ):
             application_tex.decompose()
 
         cmml_markup = math_root.find("annotation-xml", {"encoding": "MathML-Content"})
@@ -126,8 +127,9 @@ class MathExtractor:
             cmml_markup.name = "math"
         else:
             cmml_markup = math_root
-            pmml_markup = math_root.find("annotation-xml", {"encoding": "MathML-Presentation"})
-            if pmml_markup:
+            if pmml_markup := math_root.find(
+                "annotation-xml", {"encoding": "MathML-Presentation"}
+            ):
                 pmml_markup.decompose()  # delete any Content MML
 
         cmml_markup['xmlns'] = "http://www.w3.org/1998/Math/MathML"  # set the default namespace
@@ -198,7 +200,7 @@ class MathExtractor:
         return SymbolTree(symbol_root, document, position, root)
 
     @classmethod
-    def parse_from_tex(cls, tex, file_id=-1, position=[0]):
+    def parse_from_tex(cls, tex, file_id=-1, position=None):
         """
         Parse expression from Tex string using latexmlmath to convert to presentation markup language
 
@@ -213,13 +215,15 @@ class MathExtractor:
 
         """
 
+        if position is None:
+            position = [0]
         # print("Parsing tex doc %s" % file_id,flush=True)
         mathml = LatexToMathML.convert_to_mathml(tex)
         pmml = cls.isolate_pmml(mathml)
         return SymbolTree(cls.convert_to_layoutsymbol(pmml), file_id, position)
 
     @classmethod
-    def parse_from_tex3(cls, tex, file_id=-1, position=[0]):
+    def parse_from_tex3(cls, tex, file_id=-1, position=None):
         """
         Parse expression from Tex string using latexmlmath to convert to presentation markup language
 
@@ -234,6 +238,8 @@ class MathExtractor:
 
         """
 
+        if position is None:
+            position = [0]
         # print("Parsing tex doc %s" % file_id,flush=True)
         mathml = LatexToMathML.convert_to_mathml(tex)
         return cls.isolate_pmml(mathml)
@@ -316,26 +322,20 @@ class MathExtractor:
                     else:
                         groupUnique[s].position.append(idx)
 
-            # count expressions with E!
-            n_error = 0
-            for tree_str in groupUnique:
-                if "E!" in tree_str:
-                    n_error += 1
-
-
+            n_error = sum("E!" in tree_str for tree_str in groupUnique)
             #Behrooz
             return result
 
-            #return list(groupUnique.values()), n_error
+                #return list(groupUnique.values()), n_error
         except UnknownTagException as e:
-            reason = "Unknown tag in file or query " + str(content_id) + ": " + e.tag
+            reason = f"Unknown tag in file or query {str(content_id)}: {e.tag}"
             missing_tags[e.tag] = missing_tags.get(e.tag, set())
             missing_tags[e.tag].add([content_id, idx])
-            raise Exception(reason)  # pass on the exception to identify the document or query
+            raise Exception(reason) from e
         except Exception as err:
             reason = str(err)
             #print("Parse error in file or query " + str(content_id) + ": " + reason + ": " + str(tree), file=sys.stderr)
-            raise Exception(reason)  # pass on the exception to identify the document or query
+            raise Exception(reason) from err
 
     @classmethod
     def parse_from_xml_opt(cls, content, content_id, operator=False, missing_tags=None, problem_files=None):
@@ -390,29 +390,23 @@ class MathExtractor:
                     else:
                         groupUnique[s].position.append(idx)
 
-            # count expressions with E!
-            n_error = 0
-            for tree_str in groupUnique:
-                if "E!" in tree_str:
-                    n_error += 1
-
-
+            n_error = sum("E!" in tree_str for tree_str in groupUnique)
             #Behrooz
             return result
 
-            #return list(groupUnique.values()), n_error
+                #return list(groupUnique.values()), n_error
         except UnknownTagException as e:
-            reason = "Unknown tag in file or query " + str(content_id) + ": " + e.tag
+            reason = f"Unknown tag in file or query {str(content_id)}: {e.tag}"
             missing_tags[e.tag] = missing_tags.get(e.tag, set())
             missing_tags[e.tag].add([content_id, idx])
-            raise Exception(reason)  # pass on the exception to identify the document or query
+            raise Exception(reason) from e
         except Exception as err:
             reason = str(err)
             #print("Parse error in file or query " + str(content_id) + ": " + reason + ": " + str(tree), file=sys.stderr)
-            raise Exception(reason)  # pass on the exception to identify the document or query
+            raise Exception(reason) from err
 
 
-    def test_behrooz_parse_from_xml(cls, content, content_id, operator=False, missing_tags=None):
+    def test_behrooz_parse_from_xml(self, content, content_id, operator=False, missing_tags=None):
         """
         Parse expressions from XML file
 
@@ -432,7 +426,7 @@ class MathExtractor:
         idx = -1
         result = {}
         try:
-            trees = cls.math_tokens(content)
+            trees = self.math_tokens(content)
             groupUnique = {}
 
             for idx, tree in enumerate(trees):
@@ -440,14 +434,14 @@ class MathExtractor:
                 # print(tree)
                 if operator:
                     # parse from content mathml, build an operator tree ...
-                    cmml = cls.isolate_cmml(tree)
+                    cmml = self.isolate_cmml(tree)
                     # print(cmml)
-                    current_tree = cls.convert_to_semanticsymbol(cmml)
+                    current_tree = self.convert_to_semanticsymbol(cmml)
 
                 else:
                     # parse from presentation mathml, build a symbol layout tree ...
-                    pmml = cls.isolate_pmml(tree)
-                    current_tree = cls.convert_to_layoutsymbol(pmml)
+                    pmml = self.isolate_pmml(tree)
+                    current_tree = self.convert_to_layoutsymbol(pmml)
 
                 if current_tree:
                     s = current_tree.tostring()
@@ -457,19 +451,14 @@ class MathExtractor:
                     else:
                         groupUnique[s].position.append(idx)
 
-            # count expressions with E!
-            n_error = 0
-            for tree_str in groupUnique:
-                if "E!" in tree_str:
-                    n_error += 1
-
+            n_error = sum("E!" in tree_str for tree_str in groupUnique)
             return result
         except UnknownTagException as e:
-            reason = "Unknown tag in file or query " + str(content_id) + ": " + e.tag
+            reason = f"Unknown tag in file or query {str(content_id)}: {e.tag}"
             missing_tags[e.tag] = missing_tags.get(e.tag, set())
             missing_tags[e.tag].add([content_id, idx])
-            raise Exception(reason)  # pass on the exception to identify the document or query
+            raise Exception(reason) from e
         except Exception as err:
             reason = str(err)
             #print("Parse error in file or query " + str(content_id) + ": " + reason + ": " + str(tree), file=sys.stderr)
-            raise Exception(reason)  # pass on the exception to identify the document or query
+            raise Exception(reason) from err

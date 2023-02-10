@@ -18,24 +18,20 @@ class Configuration:
         self.vector_size = None
 
         if config_file_path is not None:
-            file = open(config_file_path)
-            line = file.readline().rstrip('\n')
-            while line:
-                parameter = line.split(",")[0]
-                value = line.split(",")[1]
-                if str.isdigit(value):
-                    value = int(value)
-                setattr(self, parameter, value)
-                line = file.readline().rstrip('\n')
-            file.close()
+            with open(config_file_path) as file:
+                while line := file.readline().rstrip('\n'):
+                    parameter = line.split(",")[0]
+                    value = line.split(",")[1]
+                    if str.isdigit(value):
+                        value = int(value)
+                    setattr(self, parameter, value)
 
     def write_to_file(self, config_file_path):
         """
         Saves configuration of the model in a file.
         :param config_file_path: File path where the model's configuration are saved.
         """
-        file = open(config_file_path, "w")
-        attribute_map = self.__dict__
-        for item in attribute_map:
-            file.write(item + "," + str(attribute_map[item]) + "\n")
-        file.close()
+        with open(config_file_path, "w") as file:
+            attribute_map = self.__dict__
+            for item in attribute_map:
+                file.write(f"{item},{str(attribute_map[item])}" + "\n")

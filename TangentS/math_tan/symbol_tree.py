@@ -49,10 +49,10 @@ class SymbolTree:
         pairs = []
         for s1, s2, relationship, location in self.root.get_pairs('', window, eob):
             p='\t'.join([s1, s2, relationship, location])
-            if not (len(p)>200):
+            if len(p) <= 200:
                 pairs.append(p)
             else:
-                print("pair "+ p +"is longer than 200 characters" , file=sys.stderr)
+                print(f"pair {p}is longer than 200 characters", file=sys.stderr)
         return pairs
 
 ##    def get_symbols(self):
@@ -77,10 +77,9 @@ class SymbolTree:
         # print("sub: " + tree_substring)
 
         pos = 1
-        while not tree_substring[pos] in ["[", "]"]:
-            if tree_substring[pos] == "," and pos > 1:
-                break
-
+        while tree_substring[pos] not in ["[", "]"] and (
+            tree_substring[pos] != "," or pos <= 1
+        ):
             pos += 1
 
         label = tree_substring[1:pos]
@@ -104,7 +103,7 @@ class SymbolTree:
         root.children = children
 
         if tree_substring != root.tostring():
-            print("Mismatch: " + tree_substring + " -> " + root.tostring(), flush=True)
+            print(f"Mismatch: {tree_substring} -> {root.tostring()}", flush=True)
             exit(1)
 
         return root
@@ -129,17 +128,10 @@ class SymbolTree:
         #print("sub: " + tree_substring)
 
         pos = 1
-        while not tree_substring[pos] in ["[", "]"]:
-            if tree_substring[pos] == "," and pos > 1:
-                break
-
-            if tree_substring[pos:pos + 2] == "M!":
-                #special case of matrices...
-                pos += 2
-            else:
-                #everything else
-                pos += 1
-
+        while tree_substring[pos] not in ["[", "]"] and (
+            tree_substring[pos] != "," or pos <= 1
+        ):
+            pos += 2 if tree_substring[pos:pos + 2] == "M!" else 1
         label = tree_substring[1:pos]
         current_next = None
         current_above = None
@@ -174,26 +166,26 @@ class SymbolTree:
                     current_above = child_node
                 elif child_relation == "b":
                     current_below = child_node
-                elif child_relation == "o":
-                    current_over = child_node
-                elif child_relation == "u":
-                    current_under = child_node
                 elif child_relation == "c":
                     current_pre_above = child_node
                 elif child_relation == "d":
                     current_pre_below = child_node
-                elif child_relation == "w":
-                    current_within = child_node
                 elif child_relation == "e":
                     current_element = child_node
+                elif child_relation == "o":
+                    current_over = child_node
+                elif child_relation == "u":
+                    current_under = child_node
+                elif child_relation == "w":
+                    current_within = child_node
                 else:
-                    print("Invalid child relation found: " + child_relation)
+                    print(f"Invalid child relation found: {child_relation}")
 
 
         root = LayoutSymbol(label, current_next, current_above, current_below, current_over, current_under,
                           current_within, current_pre_above, current_pre_below, current_element)
         if tree_substring != root.tostring():
-            print("Mismatch: " + tree_substring + " -> " + root.tostring(), flush=True)
+            print(f"Mismatch: {tree_substring} -> {root.tostring()}", flush=True)
             exit(1)
 
         return root
@@ -235,16 +227,11 @@ class SymbolTree:
         content = " ".join(rank_strings) + " ".join(node_strings) + " ".join(edge_strings)
 
         footer = "}\n"
-        final = header + content + footer
-
-        #print(final)
-
-        return final
+        return header + content + footer
 
     def save_as_dot(self, output_filename, highlight=None, unified=None, wildcard=None, generic=False):
         dot_str = self.get_dot_string(highlight, unified, wildcard, generic)
 
-        out = open(output_filename, "w")
-        out.write(dot_str)
-        out.close()
+        with open(output_filename, "w") as out:
+            out.write(dot_str)
 

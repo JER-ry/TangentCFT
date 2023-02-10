@@ -36,7 +36,7 @@ class TangentCFTBackEnd:
         print("training the fast text model...")
         self.module.train_model(self.config, list(dictionary_formula_tuples_collection.values()))
 
-        if model_file_path is not None:
+        if model_file_path:
             print("saving the fast text model...")
             self.module.save_model(model_file_path)
         return dictionary_formula_tuples_collection
@@ -93,18 +93,15 @@ class TangentCFTBackEnd:
         """
         Creates result files in Trec format that can be used for trec_eval tool
         """
-        file = open(result_file_path, "w")
-        for query_id in result_query_doc:
-            count = 1
-            query = "NTCIR12-MathWiki-" + str(query_id)
-            line = query + " xxx "
-            for x in result_query_doc[query_id]:
-                doc_id = x
-                score = result_query_doc[query_id][x]
-                temp = line + doc_id + " " + str(count) + " " + str(score) + " Run_" + str(run_id)
-                count += 1
-                file.write(temp + "\n")
-        file.close()
+        with open(result_file_path, "w") as file:
+            for query_id in result_query_doc:
+                query = f"NTCIR12-MathWiki-{str(query_id)}"
+                line = f"{query} xxx "
+                for count, x in enumerate(result_query_doc[query_id], start=1):
+                    doc_id = x
+                    score = result_query_doc[query_id][x]
+                    temp = line + doc_id + " " + str(count) + " " + str(score) + " Run_" + str(run_id)
+                    file.write(temp + "\n")
 
     def __encode_train_tuples(self, embedding_type, ignore_full_relative_path, tokenize_all, tokenize_number):
         """
@@ -112,17 +109,20 @@ class TangentCFTBackEnd:
         defined in the method inputs.
         The return value is dictionary of formula_id and list of encoded tuples
         """
-        dictionary_lst_encoded_tuples = {}
         print("reading train data...")
         dictionary_formula_slt_tuple = self.data_reader.get_collection()
         print(len(dictionary_formula_slt_tuple.keys()))
         print("encoding train data...")
-        for formula in dictionary_formula_slt_tuple:
-            dictionary_lst_encoded_tuples[formula] = self.__encode_lst_tuples(dictionary_formula_slt_tuple[formula],
-                                                                              embedding_type, ignore_full_relative_path,
-                                                                              tokenize_all,
-                                                                              tokenize_number)
-        return dictionary_lst_encoded_tuples
+        return {
+            formula: self.__encode_lst_tuples(
+                dictionary_formula_slt_tuple[formula],
+                embedding_type,
+                ignore_full_relative_path,
+                tokenize_all,
+                tokenize_number,
+            )
+            for formula in dictionary_formula_slt_tuple
+        }
 
     def __encode_lst_tuples(self, list_of_tuples, embedding_type, ignore_full_relative_path, tokenize_all,
                             tokenize_number):
@@ -147,31 +147,27 @@ class TangentCFTBackEnd:
         where E/N shows if the character is edge or node value, the character is tuple character to be encoded and encoded
         value is the value the encoder gave to character.
         """
-        file = open(map_file_path, "w")
-        for item in self.encoder_map_node:
-            file.write("N" + "\t" + str(item) + "\t" + str(self.encoder_map_node[item]) + "\n")
-        for item in self.encoder_map_edge:
-            file.write("E" + "\t" + str(item) + "\t" + str(self.encoder_map_edge[item]) + "\n")
-        file.close()
+        with open(map_file_path, "w") as file:
+            for item in self.encoder_map_node:
+                file.write("N" + "\t" + str(item) + "\t" + str(self.encoder_map_node[item]) + "\n")
+            for item in self.encoder_map_edge:
+                file.write("E" + "\t" + str(item) + "\t" + str(self.encoder_map_edge[item]) + "\n")
 
     def __load_encoder_map(self, map_file_path):
         """
         This method loads the saved encoder values into two dictionary used for edge and node values.
         """
-        file = open(map_file_path)
-        line = file.readline().strip("\n")
-        while line:
-            parts = line.split("\t")
-            encoder_type = parts[0]
-            symbol = parts[1]
-            value = int(parts[2])
-            if encoder_type == "N":
-                self.encoder_map_node[symbol] = value
-            else:
-                self.encoder_map_edge[symbol] = value
-            line = file.readline().strip("\n")
-        "The id shows the id that should be assigned to the next character to be encoded (a character that is not seen)" \
-        "Therefore there is a plus one in the following lines"
-        self.node_id = max(list(self.encoder_map_node.values())) + 1
-        self.edge_id = max(list(self.encoder_map_edge.values())) + 1
-        file.close()
+        with open(map_file_path) as file:
+            while line := file.readline().strip("\n"):
+                parts = line.split("\t")
+                encoder_type = parts[0]
+                symbol = parts[1]
+                value = int(parts[2])
+                if encoder_type == "N":
+                    self.encoder_map_node[symbol] = value
+                else:
+                    self.encoder_map_edge[symbol] = value
+            "The id shows the id that should be assigned to the next character to be encoded (a character that is not seen)" \
+                "Therefore there is a plus one in the following lines"
+            self.node_id = max(list(self.encoder_map_node.values())) + 1 if len(self.encoder_map_node.values()) > 0 else 0
+            self.edge_id = max(list(self.encoder_map_edge.values())) + 1 if len(self.encoder_map_node.values()) > 0 else 0
