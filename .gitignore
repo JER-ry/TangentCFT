@@ -1,2 +1,4 @@
 __pycache__
 NTCIR-12_MathIR_Wikipedia_Corpus
+*.npy
+*.tsv

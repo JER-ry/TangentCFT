@@ -109,4 +109,4 @@ class TangentCFTModule:
                 counter = counter + 1
             except Exception as e:
                 logging.exception(e)
-        return (temp_vector / counter)
+        return temp_vector / counter

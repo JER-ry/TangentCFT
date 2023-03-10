@@ -1,8 +1,6 @@
-import argparse
 import numpy as np
 from torch.autograd import Variable
 import torch
-import torch.nn.functional as F
 from Embedding_Preprocessing.encoder_tuple_level import TupleTokenizationMode
 from tangent_cft_back_end import TangentCFTBackEnd
 from tangent_cft_module import TangentCFTModule
@@ -67,7 +65,7 @@ def retrieval(collection_vectors, index_formula_id, query_vectors):
 
 def main():
 
-    dataset_file_path = "/NTCIR12_MathIR_WikiCorpus_v2.1.0/MathTagArticles"
+    dataset_file_path = "NTCIR-12_MathIR_Wikipedia_Corpus/MathTagArticles"
     queries_directory_path = "/TestQueries"
     is_wiki = True
 
